@@ -4,14 +4,30 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import helmet from 'helmet';
 import pool from './db.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(helmet());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (!allowedOrigins.length && !isProduction) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // ===== RATE LIMITING =====
@@ -22,7 +38,16 @@ const authLimiter = rateLimit({
 });
 
 // ===== AUTH MIDDLEWARE =====
-const JWT_SECRET = process.env.JWT_SECRET || 'ppds-secret-dev';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is required');
+}
+
+const requireStrongPassword = (password) => {
+  if (typeof password !== 'string') return false;
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password);
+};
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -97,7 +122,7 @@ app.get('/api/hero', async (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/hero', async (req, res) => {
+app.post('/api/hero', authMiddleware, adminOnly, async (req, res) => {
   const { title, subtitle, description, image_url, button_text, button_link, sort_order } = req.body;
   if (!title) return res.status(400).json({ message: 'Title is required' });
   const [result] = await pool.query(
@@ -108,7 +133,7 @@ app.post('/api/hero', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.put('/api/hero/:id', async (req, res) => {
+app.put('/api/hero/:id', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
   const { title, subtitle, description, image_url, button_text, button_link, sort_order } = req.body;
   await pool.query(
@@ -119,7 +144,7 @@ app.put('/api/hero/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.delete('/api/hero/:id', async (req, res) => {
+app.delete('/api/hero/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query('DELETE FROM hero_slides WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
@@ -131,7 +156,7 @@ app.get('/api/sekilas-pandang', async (req, res) => {
   res.json(mapSekilasPandang(rows[0]));
 });
 
-app.put('/api/sekilas-pandang', async (req, res) => {
+app.put('/api/sekilas-pandang', authMiddleware, adminOnly, async (req, res) => {
   const { title, content, image, stats } = req.body;
   await pool.query(
     'UPDATE sekilas_pandang SET title = ?, content = ?, image = ?, stats = ? WHERE id = 1',
@@ -148,7 +173,7 @@ app.get('/api/visi-misi', async (req, res) => {
   res.json(mapVisiMisi(rows[0]));
 });
 
-app.put('/api/visi-misi', async (req, res) => {
+app.put('/api/visi-misi', authMiddleware, adminOnly, async (req, res) => {
   const { visi, misi } = req.body;
   await pool.query('UPDATE visi_misi SET visi = ?, misi = ? WHERE id = 1', [visi, JSON.stringify(misi || [])]);
   const [rows] = await pool.query('SELECT * FROM visi_misi WHERE id = 1');
@@ -161,7 +186,7 @@ app.get('/api/pengasuh', async (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/pengasuh', async (req, res) => {
+app.post('/api/pengasuh', authMiddleware, adminOnly, async (req, res) => {
   const { name, role, image, bio } = req.body;
   const [result] = await pool.query(
     'INSERT INTO pengasuh (name, role, image, bio) VALUES (?, ?, ?, ?)',
@@ -171,7 +196,7 @@ app.post('/api/pengasuh', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.put('/api/pengasuh/:id', async (req, res) => {
+app.put('/api/pengasuh/:id', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
   const { name, role, image, bio } = req.body;
   await pool.query('UPDATE pengasuh SET name = ?, role = ?, image = ?, bio = ? WHERE id = ?', [name, role, image, bio, id]);
@@ -179,7 +204,7 @@ app.put('/api/pengasuh/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.delete('/api/pengasuh/:id', async (req, res) => {
+app.delete('/api/pengasuh/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query('DELETE FROM pengasuh WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
@@ -191,7 +216,7 @@ app.get('/api/pendidikan', async (req, res) => {
   res.json(mapPendidikan(rows[0]));
 });
 
-app.put('/api/pendidikan', async (req, res) => {
+app.put('/api/pendidikan', authMiddleware, adminOnly, async (req, res) => {
   const { formal, nonFormal, extracurriculars, schedule } = req.body;
   await pool.query(
     'UPDATE pendidikan SET formal = ?, non_formal = ?, extracurriculars = ?, schedule = ? WHERE id = 1',
@@ -219,7 +244,7 @@ app.get('/api/pojok-santri/:id', async (req, res) => {
   res.json(rows[0] || null);
 });
 
-app.post('/api/pojok-santri', async (req, res) => {
+app.post('/api/pojok-santri', authMiddleware, adminOnly, async (req, res) => {
   const { title, content, author, authorRole, date, image, category } = req.body;
   const [result] = await pool.query(
     'INSERT INTO pojok_santri (title, content, author, author_role, date, image, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -229,7 +254,7 @@ app.post('/api/pojok-santri', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.put('/api/pojok-santri/:id', async (req, res) => {
+app.put('/api/pojok-santri/:id', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
   const { title, content, author, authorRole, date, image, category } = req.body;
   await pool.query(
@@ -240,7 +265,7 @@ app.put('/api/pojok-santri/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.delete('/api/pojok-santri/:id', async (req, res) => {
+app.delete('/api/pojok-santri/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query('DELETE FROM pojok_santri WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
@@ -256,7 +281,7 @@ app.get('/api/pengumuman/:id', async (req, res) => {
   res.json(rows[0] || null);
 });
 
-app.post('/api/pengumuman', async (req, res) => {
+app.post('/api/pengumuman', authMiddleware, adminOnly, async (req, res) => {
   const { title, content, date, important } = req.body;
   const [result] = await pool.query(
     'INSERT INTO pengumuman (title, content, date, important) VALUES (?, ?, ?, ?)',
@@ -266,7 +291,7 @@ app.post('/api/pengumuman', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.put('/api/pengumuman/:id', async (req, res) => {
+app.put('/api/pengumuman/:id', authMiddleware, adminOnly, async (req, res) => {
   const { id } = req.params;
   const { title, content, date, important } = req.body;
   await pool.query(
@@ -277,7 +302,7 @@ app.put('/api/pengumuman/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-app.delete('/api/pengumuman/:id', async (req, res) => {
+app.delete('/api/pengumuman/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query('DELETE FROM pengumuman WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
@@ -289,7 +314,7 @@ app.get('/api/pendaftaran', async (req, res) => {
   res.json(mapPendaftaran(rows[0]));
 });
 
-app.put('/api/pendaftaran', async (req, res) => {
+app.put('/api/pendaftaran', authMiddleware, adminOnly, async (req, res) => {
   const { isOpen, description, descriptionExtra, requirements, waves, registrationUrl } = req.body;
   await pool.query(
     'UPDATE pendaftaran SET is_open = ?, description = ?, description_extra = ?, requirements = ?, waves = ?, registration_url = ? WHERE id = 1',
@@ -307,6 +332,9 @@ app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
 
 app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
   const { name, username, password, role } = req.body;
+  if (!requireStrongPassword(password)) {
+    return res.status(400).json({ message: 'Password must be at least 8 chars and include uppercase, lowercase, and number' });
+  }
   try {
     const hashed = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
@@ -325,6 +353,9 @@ app.put('/api/users/:id', authMiddleware, adminOnly, async (req, res) => {
   const { name, username, password, role } = req.body;
   try {
     if (password) {
+      if (!requireStrongPassword(password)) {
+        return res.status(400).json({ message: 'Password must be at least 8 chars and include uppercase, lowercase, and number' });
+      }
       const hashed = await bcrypt.hash(password, 10);
       await pool.query('UPDATE users SET name = ?, username = ?, password = ?, role = ? WHERE id = ?', [name, username, hashed, role, id]);
     } else {
@@ -345,6 +376,9 @@ app.delete('/api/users/:id', authMiddleware, adminOnly, async (req, res) => {
 // ===== AUTH =====
 app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { username, password } = req.body;
+  if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
+    return res.status(400).json({ message: 'Username dan password wajib diisi' });
+  }
   const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
   if (!rows.length) return res.status(401).json({ message: 'Username atau password salah' });
 
