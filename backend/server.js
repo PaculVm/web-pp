@@ -5,7 +5,6 @@ import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
-import crypto from 'crypto';
 import pool from './db.js';
 
 dotenv.config();
@@ -13,27 +12,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 const isProduction = process.env.NODE_ENV === 'production';
-const useSecureCookies = isProduction || process.env.SECURE_COOKIE === 'true';
-
-app.set('trust proxy', 1);
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-app.use(helmet({
-  hsts: isProduction
-    ? {
-        maxAge: Number(process.env.HSTS_MAX_AGE || 31536000),
-        includeSubDomains: process.env.HSTS_INCLUDE_SUBDOMAINS !== 'false',
-        preload: true,
-      }
-    : false,
-  contentSecurityPolicy: false,
-  crossOriginResourcePolicy: { policy: 'same-site' },
-  referrerPolicy: { policy: 'no-referrer' },
-}));
+app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
     if (!origin) return callback(null, true);
@@ -43,19 +28,6 @@ app.use(cors({
   },
   credentials: true,
 }));
-
-app.use((req, res, next) => {
-  if (!isProduction) return next();
-  const forwardedProto = req.get('x-forwarded-proto');
-  const isSecure = req.secure || forwardedProto === 'https';
-  if (isSecure) return next();
-
-  const host = req.get('host');
-  if (!host) return res.status(400).json({ message: 'Invalid host header' });
-
-  return res.redirect(301, `https://${host}${req.originalUrl}`);
-});
-
 app.use(express.json());
 
 const parseCookies = (cookieHeader = '') => cookieHeader
@@ -503,20 +475,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
     return res.status(400).json({ message: 'Username dan password wajib diisi' });
   }
-  const loginUsername = username.trim();
-  const normalizedUsername = loginUsername.toLowerCase();
-  const { state } = getLockState(normalizedUsername);
-  if (state?.lockedUntil && state.lockedUntil > Date.now()) {
-    const retryAfterSeconds = Math.ceil((state.lockedUntil - Date.now()) / 1000);
-    res.set('Retry-After', String(retryAfterSeconds));
-    return res.status(423).json({ message: 'Akun terkunci sementara akibat percobaan login berulang. Silakan coba lagi nanti.' });
-  }
-
-  const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [loginUsername]);
-  if (!rows.length) {
-    recordFailedLogin(normalizedUsername);
-    return res.status(401).json({ message: 'Username atau password salah' });
-  }
+  const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
+  if (!rows.length) return res.status(401).json({ message: 'Username atau password salah' });
 
   const user = rows[0];
   const match = await bcrypt.compare(password, user.password);
