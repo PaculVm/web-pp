@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { loginApi, getUsers, createUser, updateUserApi, deleteUserApi } from '../lib/api';
+import { loginApi, logoutApi, getUsers, createUser, updateUserApi, deleteUserApi } from '../lib/api';
 
 const AuthContext = createContext(null);
 
@@ -122,10 +122,11 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     try {
       const res = await loginApi({ username, password });
-      if (res?.user && res?.token) {
+      if (res?.user) {
         setUser(res.user);
         localStorage.setItem('ppds_user', JSON.stringify(res.user));
-        localStorage.setItem('ppds_token', res.token);
+        if (res?.token) localStorage.setItem('ppds_token', res.token);
+        if (res?.csrfToken) localStorage.setItem('ppds_csrf', res.csrfToken);
         return true;
       }
       return false;
@@ -134,10 +135,14 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await logoutApi();
+    } catch (error) {}
     setUser(null);
     localStorage.removeItem('ppds_user');
     localStorage.removeItem('ppds_token');
+    localStorage.removeItem('ppds_csrf');
   };
 
 

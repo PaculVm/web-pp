@@ -30,12 +30,104 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const parseCookies = (cookieHeader = '') => cookieHeader
+  .split(';')
+  .map((part) => part.trim())
+  .filter(Boolean)
+  .reduce((acc, part) => {
+    const [key, ...rest] = part.split('=');
+    if (!key) return acc;
+    acc[key] = decodeURIComponent(rest.join('='));
+    return acc;
+  }, {});
+
+app.use((req, res, next) => {
+  req.cookies = parseCookies(req.headers.cookie || '');
+  next();
+});
+
 // ===== RATE LIMITING =====
 const authLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 menit
   max: 10, // max 10 percobaan dalam 10 menit per IP
   message: { message: 'Terlalu banyak percobaan login, silakan coba lagi beberapa menit lagi.' },
 });
+
+const failedLoginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = Number(process.env.MAX_LOGIN_ATTEMPTS || 5);
+const LOCKOUT_MS = Number(process.env.LOGIN_LOCKOUT_MS || 15 * 60 * 1000);
+const ATTEMPT_RESET_MS = Number(process.env.LOGIN_ATTEMPT_RESET_MS || 30 * 60 * 1000);
+
+const getLockState = (username) => {
+  const key = username.toLowerCase();
+  const state = failedLoginAttempts.get(key);
+  if (!state) return { key, state: null };
+
+  if (state.lockedUntil && state.lockedUntil > Date.now()) {
+    return { key, state };
+  }
+
+  if (Date.now() - state.lastFailedAt > ATTEMPT_RESET_MS) {
+    failedLoginAttempts.delete(key);
+    return { key, state: null };
+  }
+
+  if (state.lockedUntil && state.lockedUntil <= Date.now()) {
+    failedLoginAttempts.delete(key);
+    return { key, state: null };
+  }
+
+  return { key, state };
+};
+
+const recordFailedLogin = (username) => {
+  const { key, state } = getLockState(username);
+  const nextState = {
+    failedAttempts: (state?.failedAttempts || 0) + 1,
+    lastFailedAt: Date.now(),
+    lockedUntil: null,
+  };
+
+  if (nextState.failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+    nextState.lockedUntil = Date.now() + LOCKOUT_MS;
+  }
+
+  failedLoginAttempts.set(key, nextState);
+  return nextState;
+};
+
+const clearFailedLogin = (username) => {
+  failedLoginAttempts.delete(username.toLowerCase());
+};
+
+const csrfSafeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
+const CSRF_COOKIE_NAME = 'ppds_csrf';
+
+const issueCsrfToken = (res) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  res.cookie(CSRF_COOKIE_NAME, token, {
+    httpOnly: false,
+    sameSite: 'strict',
+    secure: useSecureCookies,
+    path: '/',
+  });
+  return token;
+};
+
+const csrfMiddleware = (req, res, next) => {
+  if (csrfSafeMethods.has(req.method)) return next();
+  if (req.path === '/api/auth/login') return next();
+
+  const csrfCookie = req.cookies[CSRF_COOKIE_NAME];
+  const csrfHeader = req.get('x-csrf-token');
+  if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+    return res.status(403).json({ message: 'Invalid CSRF token' });
+  }
+
+  return next();
+};
+
+app.use(csrfMiddleware);
 
 // ===== AUTH MIDDLEWARE =====
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -51,10 +143,14 @@ const requireStrongPassword = (password) => {
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const cookieToken = req.cookies.ppds_auth;
+  const token = bearerToken || cookieToken;
+
+  if (!token) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const token = authHeader.split(' ')[1];
+
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     req.user = payload;
@@ -384,12 +480,47 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
   const user = rows[0];
   const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ message: 'Username atau password salah' });
+  if (!match) {
+    const nextState = recordFailedLogin(normalizedUsername);
+    if (nextState.lockedUntil) {
+      const retryAfterSeconds = Math.ceil((nextState.lockedUntil - Date.now()) / 1000);
+      res.set('Retry-After', String(retryAfterSeconds));
+      return res.status(423).json({ message: 'Akun terkunci sementara akibat percobaan login berulang. Silakan coba lagi nanti.' });
+    }
+    return res.status(401).json({ message: 'Username atau password salah' });
+  }
+
+  clearFailedLogin(normalizedUsername);
 
   const payload = { id: user.id, name: user.name, username: user.username, role: user.role };
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+  const csrfToken = issueCsrfToken(res);
 
-  res.json({ user: payload, token });
+  res.cookie('ppds_auth', token, {
+    httpOnly: true,
+    secure: useSecureCookies,
+    sameSite: 'strict',
+    maxAge: 8 * 60 * 60 * 1000,
+    path: '/',
+  });
+
+  res.json({ user: payload, csrfToken });
+});
+
+app.post('/api/auth/logout', authMiddleware, (req, res) => {
+  res.clearCookie('ppds_auth', {
+    httpOnly: true,
+    secure: useSecureCookies,
+    sameSite: 'strict',
+    path: '/',
+  });
+  res.clearCookie(CSRF_COOKIE_NAME, {
+    httpOnly: false,
+    secure: useSecureCookies,
+    sameSite: 'strict',
+    path: '/',
+  });
+  res.json({ success: true });
 });
 
 app.listen(PORT, () => {
