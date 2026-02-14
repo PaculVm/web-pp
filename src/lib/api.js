@@ -1,12 +1,27 @@
 // Base URL - akan otomatis menyesuaikan environment
 const API_BASE = '';
 
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function getCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const entry = document.cookie.split('; ').find((item) => item.startsWith(`${name}=`));
+  return entry ? decodeURIComponent(entry.split('=')[1]) : null;
+}
+
 async function apiFetch(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
   const token = typeof window !== 'undefined' ? localStorage.getItem('ppds_token') : null;
+  const csrfToken = typeof window !== 'undefined'
+    ? (localStorage.getItem('ppds_csrf') || getCookie('ppds_csrf'))
+    : null;
+
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(!SAFE_METHODS.has(method) && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -129,7 +144,11 @@ export async function updatePendaftaranApi(payload) {
 
 // ===== USERS =====
 export async function loginApi(payload) {
-  return apiFetch('/api/login.php', { method: 'POST', body: JSON.stringify(payload) });
+  return apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function logoutApi() {
+  return apiFetch('/api/auth/logout', { method: 'POST' });
 }
 
 export async function getUsers() {
