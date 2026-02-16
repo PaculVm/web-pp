@@ -1,4 +1,4 @@
-import { PublicLayout } from "../components/PublicLayout"; // Sesuaikan path jika berbeda
+import { PublicLayout } from "../components/PublicLayout";
 import { useData } from "../contexts/DataContext";
 import {
   Book,
@@ -48,13 +48,13 @@ export function PendidikanPage() {
     );
   }
 
-  const formalEducation = pendidikan?.formal || [];
-  const nonFormalEducation = pendidikan?.nonFormal || [];
+  const formalEducation = (pendidikan?.formal || []).slice(0, 20);
+  const nonFormalEducation = (pendidikan?.nonFormal || []).slice(0, 20);
   const extracurriculars = (pendidikan?.extracurriculars || []).map((name) => ({
     name,
     icon: iconMap[name] || Book,
   }));
-  const schedule = pendidikan?.schedule || [];
+  const schedule = (pendidikan?.schedule || []).slice(0, 30);
 
   return (
     <PublicLayout>

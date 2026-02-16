@@ -12,7 +12,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Tulis konten di
       [{ color: [] }, { background: [] }],
       [{ align: [] }],
       ['blockquote', 'code-block'],
-      ['link', 'image', 'video'],
+      ['link', 'image'],
       ['clean'],
     ],
   }), []);
@@ -20,7 +20,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Tulis konten di
   const formats = [
     'header', 'bold', 'italic', 'underline', 'strike',
     'list', 'indent', 'color', 'background', 'align',
-    'blockquote', 'code-block', 'link', 'image', 'video'
+    'blockquote', 'code-block', 'link', 'image'
   ];
 
   return (

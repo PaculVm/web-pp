@@ -20,24 +20,41 @@ export function AdminLayout() {
   const isParentActive = (children) => children?.some((c) => location.pathname === c.path);
   const toggleMenu = (key) => setExpandedMenus((prev) => ({ ...prev, [key]: !prev[key] }));
 
+  // Helper role check
+  const level = user?.level || 0;
+  const isSuperAdmin = level >= 10;
+  const isAdmin = level >= 5;
+  const isEditor = level >= 1;
+
   const sidebarItems = [
-    { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-    { label: 'Hero Slide', path: '/admin/hero-slides', icon: Image },
-    {
-      label: 'Profil Pondok',
-      icon: Building2,
-      key: 'profil',
-      children: [
-        { label: 'Sekilas Pandang', path: '/admin/profil/sekilas-pandang', icon: FileText },
-        { label: 'Visi & Misi', path: '/admin/profil/visi-misi', icon: Target },
-        { label: 'Pengasuh', path: '/admin/profil/pengasuh', icon: Users },
-      ],
-    },
-    { label: 'Pendidikan', path: '/admin/pendidikan', icon: GraduationCap },
-    { label: 'Pojok Santri', path: '/admin/pojok-santri', icon: BookOpen },
-    { label: 'Pengumuman', path: '/admin/pengumuman', icon: Megaphone },
-    { label: 'Pendaftaran', path: '/admin/pendaftaran', icon: ClipboardList },
-    ...(user?.role === 'admin' ? [{ label: 'Manajemen User', path: '/admin/users', icon: Shield }] : []),
+    ...(isSuperAdmin || isAdmin ? [
+      { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+      { label: 'Hero Slide', path: '/admin/hero-slides', icon: Image },
+      {
+        label: 'Profil Pondok',
+        icon: Building2,
+        key: 'profil',
+        children: [
+          { label: 'Sekilas Pandang', path: '/admin/profil/sekilas-pandang', icon: FileText },
+          { label: 'Visi & Misi', path: '/admin/profil/visi-misi', icon: Target },
+          { label: 'Pengasuh', path: '/admin/profil/pengasuh', icon: Users },
+        ],
+      },
+      { label: 'Pendidikan', path: '/admin/pendidikan', icon: GraduationCap },
+    ] : []),
+
+    ...(isSuperAdmin || isAdmin || isEditor ? [
+      { label: 'Pojok Santri', path: '/admin/pojok-santri', icon: BookOpen },
+      { label: 'Pengumuman', path: '/admin/pengumuman', icon: Megaphone },
+    ] : []),
+
+    ...(isSuperAdmin || isAdmin ? [
+      { label: 'Pendaftaran', path: '/admin/pendaftaran', icon: ClipboardList },
+    ] : []),
+
+    ...(isSuperAdmin ? [
+      { label: 'Manajemen User', path: '/admin/users', icon: Shield },
+    ] : []),
   ];
 
   return (
@@ -68,7 +85,7 @@ export function AdminLayout() {
             </div>
             <div>
               <p className="text-[11px] font-bold truncate">{user?.name || 'Administrator'}</p>
-              <p className="text-[9px] text-emerald-400 uppercase tracking-wide">{user?.role || 'admin'}</p>
+              <p className="text-[9px] text-emerald-400 uppercase tracking-wide">{user?.role?.toUpperCase()}</p>
             </div>
           </div>
           <button

@@ -8,6 +8,16 @@ import {
 import { ConfirmDialog } from '../../components/ui/Dialog';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
 
+// Helper kecil untuk validasi URL
+const isValidUrl = (url) => {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 export function AdminPendaftaran() {
   const { pendaftaran, updatePendaftaran } = useData();
   const [saved, setSaved] = useState(false);
@@ -24,7 +34,6 @@ export function AdminPendaftaran() {
     waves: JSON.parse(JSON.stringify(pendaftaran.waves || [])),
   });
 
-  // Sync from context after reload/data refresh
   useEffect(() => {
     setForm({
       isOpen: pendaftaran.isOpen,
@@ -48,21 +57,22 @@ export function AdminPendaftaran() {
 
     setUploading(true);
     const fd = new FormData();
-    // backend menerima 'image' atau 'file'. Kita gunakan 'file' sesuai layout
     fd.append('file', file);
 
     try {
-      const token = localStorage.getItem('ppds_token');
       const response = await fetch('/api/upload.php', {
         method: 'POST',
+        credentials: 'include',
         body: fd,
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
       });
+
+      if (!response.ok) throw new Error('Upload gagal');
       const data = await response.json();
+
       if (data.url) {
         setForm(prev => ({ ...prev, brochureUrl: data.url }));
+      } else {
+        throw new Error('Upload gagal');
       }
     } catch (err) {
       console.error('Upload failed:', err);
@@ -73,6 +83,18 @@ export function AdminPendaftaran() {
   };
 	
   const handleSave = () => {
+    // Validasi URL Portal
+    if (form.registrationUrl && !isValidUrl(form.registrationUrl)) {
+      alert('URL portal tidak valid');
+      return;
+    }
+
+    // Validasi URL Brosur (jika diinput manual atau hasil upload korup)
+    if (form.brochureUrl && !isValidUrl(form.brochureUrl)) {
+      alert('URL brosur tidak valid');
+      return;
+    }
+
     const payload = {
       ...form,
       requirements: form.requirements.filter((r) => r.trim() !== ''),

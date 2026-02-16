@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DataProvider } from './contexts/DataContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // Public Pages
 import { HomePage } from './pages/HomePage';
@@ -27,9 +28,21 @@ import { AdminPojokSantri } from './pages/admin/AdminPojokSantri';
 import { AdminPengumuman } from './pages/admin/AdminPengumuman';
 import { AdminPendaftaran } from './pages/admin/AdminPendaftaran';
 import { AdminUsers } from './pages/admin/AdminUsers';
+import { Forbidden } from './pages/admin/Forbidden';
 
-// Protect Admin Routes
-function RequireAuth({ children }) {
+// 1. Tambahkan RequireGuest untuk memproteksi halaman login
+function RequireGuest({ children }) {
+  const { user } = useAuth();
+
+  if (user) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return children;
+}
+
+// 2. Replace RequireAdmin dengan RequireLevel (Lebih Fleksibel)
+function RequireLevel({ minLevel = 1, children }) {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -37,25 +50,12 @@ function RequireAuth({ children }) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
-  return children;
-}
-
-// Protect Admin-Only Routes (role === 'admin')
-function RequireAdmin({ children }) {
-  const { user } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/admin/login" replace />;
-  }
-
-  if (user.role !== 'admin') {
-    return <Navigate to="/admin" replace />;
+  if ((user.level ?? 0) < minLevel) {
+    return <Navigate to="/admin/forbidden" replace />;
   }
 
   return children;
 }
-
-import { NotificationProvider } from './contexts/NotificationContext';
 
 export function App() {
   return (
@@ -63,47 +63,64 @@ export function App() {
       <AuthProvider>
         <DataProvider>
           <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/profil/sekilas-pandang" element={<SekilasPandangPage />} />
-            <Route path="/profil/visi-misi" element={<VisiMisiPage />} />
-            <Route path="/profil/pengasuh" element={<PengasuhPage />} />
-            <Route path="/pendidikan" element={<PendidikanPage />} />
-            <Route path="/pojok-santri" element={<PojokSantriPage />} />
-            <Route path="/pojok-santri/:id" element={<PojokSantriDetailPage />} />
-            <Route path="/pengumuman" element={<PengumumanPage />} />
-            <Route path="/pengumuman/:id" element={<PengumumanDetailPage />} />
-            <Route path="/pendaftaran" element={<PendaftaranPage />} />
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/profil/sekilas-pandang" element={<SekilasPandangPage />} />
+              <Route path="/profil/visi-misi" element={<VisiMisiPage />} />
+              <Route path="/profil/pengasuh" element={<PengasuhPage />} />
+              <Route path="/pendidikan" element={<PendidikanPage />} />
+              <Route path="/pojok-santri" element={<PojokSantriPage />} />
+              <Route path="/pojok-santri/:id" element={<PojokSantriDetailPage />} />
+              <Route path="/pengumuman" element={<PengumumanPage />} />
+              <Route path="/pengumuman/:id" element={<PengumumanDetailPage />} />
+              <Route path="/pendaftaran" element={<PendaftaranPage />} />
+              
+              {/* 1. Update Route Login dengan RequireGuest */}
+              <Route 
+                path="/admin/login" 
+                element={
+                  <RequireGuest>
+                    <Login />
+                  </RequireGuest>
+                } 
+              />
 
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<Login />} />
-            <Route 
-              path="/admin" 
-              element={
-                <RequireAuth>
-                  <AdminLayout />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<AdminDashboard />} />
-              <Route path="hero-slides" element={<AdminHeroSlides />} />
-              <Route path="profil/sekilas-pandang" element={<AdminSekilasPandang />} />
-              <Route path="profil/visi-misi" element={<AdminVisiMisi />} />
-              <Route path="profil/pengasuh" element={<AdminPengasuh />} />
-              <Route path="pendidikan" element={<AdminPendidikan />} />
-              <Route path="pojok-santri" element={<AdminPojokSantri />} />
-              <Route path="pengumuman" element={<AdminPengumuman />} />
-              <Route path="pendaftaran" element={<AdminPendaftaran />} />
-              <Route path="users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
-            </Route>
+              {/* Admin Routes */}
+              <Route 
+                path="/admin" 
+                element={
+                  <RequireLevel minLevel={1}>
+                    <AdminLayout />
+                  </RequireLevel>
+                }
+              >
+                <Route index element={<AdminDashboard />} />
+                <Route path="hero-slides" element={<AdminHeroSlides />} />
+                <Route path="profil/sekilas-pandang" element={<AdminSekilasPandang />} />
+                <Route path="profil/visi-misi" element={<AdminVisiMisi />} />
+                <Route path="profil/pengasuh" element={<AdminPengasuh />} />
+                <Route path="pendidikan" element={<AdminPendidikan />} />
+                <Route path="pojok-santri" element={<AdminPojokSantri />} />
+                <Route path="pengumuman" element={<AdminPengumuman />} />
+                <Route path="pendaftaran" element={<AdminPendaftaran />} />
+                <Route path="/admin/forbidden" element={<Forbidden />} />
+                {/* 3. Ganti Route Users dengan RequireLevel (Min Level 5 untuk Admin) */}
+                <Route 
+                  path="users" 
+                  element={
+                    <RequireLevel minLevel={10}>
+                      <AdminUsers />
+                    </RequireLevel>
+                  } 
+                />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </DataProvider>
-    </AuthProvider>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </DataProvider>
+      </AuthProvider>
     </NotificationProvider>
   );
 }

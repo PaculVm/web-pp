@@ -22,10 +22,25 @@ export function AdminSekilasPandang() {
     });
   }, [sekilasPandang]);
 
-	const handleSave = () => {
-    updateSekilasPandang(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+	const handleSave = async () => {
+    if (saving) return;
+
+    if (!form.title.trim()) {
+      alert('Judul tidak boleh kosong');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await updateSekilasPandang(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      alert('Gagal menyimpan perubahan');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

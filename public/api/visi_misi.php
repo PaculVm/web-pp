@@ -1,11 +1,45 @@
 <?php
-require_once 'db.php';
-require_once 'helpers.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/jwt.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-function mapVisiMisi($row) {
+function rateLimit($max = 100, $window = 60)
+{
+    $ip = $_SERVER['REMOTE_ADDR'];
+    $key = sys_get_temp_dir() . '/rl_' . md5($ip);
+
+    $data = file_exists($key) ? json_decode(file_get_contents($key), true) : ['count' => 0, 'start' => time()];
+
+    if (time() - $data['start'] > $window) {
+        $data = ['count' => 0, 'start' => time()];
+    }
+
+    $data['count']++;
+
+    if ($data['count'] > $max) {
+        http_response_code(429);
+        exit(json_encode(['error' => 'Too many requests']));
+    }
+
+    file_put_contents($key, json_encode($data));
+}
+
+function sanitizeContent($html)
+{
+    return trim($html); // fallback minimal
+}
+
+function sanitizeArray($value)
+{
+    return is_array($value) ? $value : [];
+}
+
+function mapVisiMisi($row)
+{
     if (!$row) return null;
+
     return [
         'id' => $row['id'],
         'visi' => $row['visi'],
@@ -14,22 +48,34 @@ function mapVisiMisi($row) {
 }
 
 switch ($method) {
+
     case 'GET':
-        $stmt = $pdo->query('SELECT * FROM visi_misi WHERE id = 1');
-        $row = $stmt->fetch();
-        jsonResponse(mapVisiMisi($row));
+        $stmt = $pdo->query(
+            'SELECT * FROM visi_misi WHERE id = 1'
+        );
+        jsonResponse(mapVisiMisi($stmt->fetch()));
         break;
 
     case 'PUT':
+        requireAdmin(); // 🔥 WAJIB AUTH
+
         $input = getJsonInput();
-        
-        $stmt = $pdo->prepare('UPDATE visi_misi SET visi = ?, misi = ? WHERE id = 1');
+
+        $stmt = $pdo->prepare(
+            'UPDATE visi_misi SET
+             visi = ?, misi = ?
+             WHERE id = 1'
+        );
+
         $stmt->execute([
-            $input['visi'] ?? '',
-            json_encode($input['misi'] ?? [])
+            sanitizeContent($input['visi'] ?? ''),
+            json_encode(sanitizeArray($input['misi'] ?? []))
         ]);
-        
-        $stmt = $pdo->query('SELECT * FROM visi_misi WHERE id = 1');
+
+        $stmt = $pdo->query(
+            'SELECT * FROM visi_misi WHERE id = 1'
+        );
+
         jsonResponse(mapVisiMisi($stmt->fetch()));
         break;
 

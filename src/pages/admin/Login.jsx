@@ -15,21 +15,31 @@ export function Login() {
   const location = useLocation();
   const { showToast } = useNotification();
   
+  const { user } = useAuth();
+  if (user) {
+    return <navigate to="/admin" replace />;
+  }
+
   const from = location.state?.from?.pathname || '/admin';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
-    
+
     try {
-      const success = await login(username, password);
+      const success = await login(username.trim(), password);
+
       if (success) {
         showToast('Login berhasil! Selamat datang kembali.', 'success');
         navigate(from, { replace: true });
       } else {
+        setPassword(''); // 🔥 clear password on fail
         showToast('Username atau password salah', 'error');
       }
-    } catch (err) {
+    } catch {
+      setPassword('');
       showToast('Terjadi kesalahan sistem.', 'error');
     } finally {
       setLoading(false);
@@ -77,6 +87,7 @@ export function Login() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Masukkan username"
+                    maxLength={100}
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium text-slate-700"
                     required
                   />
@@ -95,6 +106,7 @@ export function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    maxLength={128}
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium text-slate-700"
                     required
                   />

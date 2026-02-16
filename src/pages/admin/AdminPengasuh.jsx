@@ -1,14 +1,34 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { Plus, Trash2, X, User, Briefcase, AlignLeft, UserStar } from 'lucide-react';
 import { ImageUpload } from '../../components/ui/ImageUpload';
 import { ConfirmDialog } from '../../components/ui/Dialog';
 
 export function AdminPengasuh() {
+  const { user } = useAuth();
   const { pengasuh, addPengasuh, deletePengasuh } = useData();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', role: '', image: '', bio: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null });
+
+  // 🔐 Defensive route guard
+  if (!user || !['admin', 'superadmin'].includes(user.role)) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  // 🔒 Safe image whitelist
+  const safeImage = (url) => {
+    if (!url) return '/images/placeholder.svg';
+    if (
+      url.startsWith('/uploads/') ||
+      url.startsWith(window.location.origin)
+    ) {
+      return url;
+    }
+    return '/images/placeholder.svg';
+  };
 
   const handleAdd = () => {
     if (form.name && form.role) {
@@ -24,7 +44,7 @@ export function AdminPengasuh() {
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
       {/* Header Section - Compact */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
         <div>
@@ -128,7 +148,7 @@ export function AdminPengasuh() {
             {/* Image Section */}
             <div className="w-full sm:w-32 md:w-36 aspect-square sm:aspect-auto overflow-hidden bg-slate-100 shrink-0">
               <img 
-                src={item.image || '/images/placeholder.svg'} 
+                src={safeImage(item.image)} 
                 alt={item.name} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
               />

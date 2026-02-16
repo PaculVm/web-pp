@@ -125,7 +125,7 @@ export function AdminPendidikan() {
   ];
 
   return (
-    <div className="max-w-[1280px] mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Sticky Header - Compact */}
       <div className="sticky top-0 z-10 bg-gray-50/80 backdrop-blur-md pt-1.5 pb-3 mb-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -152,7 +152,7 @@ export function AdminPendidikan() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === tab.id
                   ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-100'
                   : 'bg-white text-gray-500 border border-gray-200 hover:border-emerald-300'

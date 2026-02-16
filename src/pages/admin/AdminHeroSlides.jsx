@@ -4,11 +4,25 @@ import { Plus, Trash2, X, Save, CheckCircle, Edit3, Image, Info, ExternalLink } 
 import { ImageUpload } from '../../components/ui/ImageUpload';
 import { ConfirmDialog } from '../../components/ui/Dialog';
 
+const isValidUrl = (value) => {
+  if (!value) return true; // kosong masih boleh
+  try {
+    const url = new URL(value, window.location.origin);
+    return (
+      ['http:', 'https:'].includes(url.protocol) ||
+      value.startsWith('/') // untuk internal route
+    );
+  } catch {
+    return false;
+  }
+};
+
 export function AdminHeroSlides() {
   const { heroSlides, addHeroSlide, updateHeroSlide, deleteHeroSlide } = useData();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: '',
     subtitle: '',
@@ -38,16 +52,26 @@ export function AdminHeroSlides() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim()) return;
-    if (editingId) {
-      updateHeroSlide(editingId, form);
-    } else {
-      addHeroSlide(form);
+    if (!isValidUrl(form.button_link) || !isValidUrl(form.image_url)) {
+      alert('Link tidak valid.');
+      return;
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    resetForm();
+    setLoading(true);
+
+    try {
+      if (editingId) {
+        await updateHeroSlide(editingId, form);
+      } else {
+        await addHeroSlide(form);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      resetForm();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null });
@@ -167,9 +191,13 @@ export function AdminHeroSlides() {
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center justify-center gap-1.5 px-6 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95"
+              disabled={loading}
+              className={`flex items-center justify-center gap-1.5 px-6 py-2.5 
+              ${loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} 
+              text-white text-sm font-bold rounded-xl transition-all`}
             >
-              <Save size={14} /> {editingId ? 'Simpan' : 'Terbitkan'}
+              <Save size={14} />
+              {loading ? 'Menyimpan...' : editingId ? 'Simpan' : 'Terbitkan'}
             </button>
           </div>
         </div>

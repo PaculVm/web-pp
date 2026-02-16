@@ -13,6 +13,16 @@ import {
 export function PendaftaranPage() {
   const { pendaftaran, loading } = useData();
 
+  const safeUrl = (url) => {
+    try {
+      const parsed = new URL(url);
+      if (['http:', 'https:'].includes(parsed.protocol)) {
+        return url;
+      }
+    } catch {}
+    return null;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -78,7 +88,7 @@ export function PendaftaranPage() {
                         Persyaratan Umum
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(pendaftaran.requirements || []).map((req, index) => (
+                        {(pendaftaran.requirements || []).slice(0, 50).map((req, index) => (
                           <div
                             key={index}
                             className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-emerald-100 transition-colors"
@@ -110,7 +120,7 @@ export function PendaftaranPage() {
                       </div>
                     </div>
                     <a
-                      href={pendaftaran.brochureUrl}
+                      href={safeUrl(pendaftaran.brochureUrl) || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-8 py-4 bg-white text-emerald-700 font-black rounded-2xl hover:bg-emerald-50 transition-colors flex items-center gap-2 shadow-lg"
@@ -132,7 +142,7 @@ export function PendaftaranPage() {
                   </h3>
 
                   <div className="space-y-6 relative before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-                    {(pendaftaran.waves || []).map((wave, index) => (
+                    {(pendaftaran.waves || []).slice(0, 10).map((wave, index) => (
                       <div key={index} className="relative pl-10">
                         <div
                           className={`absolute left-0 top-1 w-5 h-5 rounded-full border-4 border-white shadow-sm z-10 transition-colors ${wave.active ? "bg-emerald-500 scale-125" : "bg-slate-300"}`}
@@ -167,7 +177,7 @@ export function PendaftaranPage() {
                           sekarang.
                         </p>
                         <a
-                          href={pendaftaran.registrationUrl}
+                          href={safeUrl(pendaftaran.registrationUrl) || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center gap-3 w-full bg-emerald-600 text-white font-black py-5 px-6 rounded-2xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 hover:shadow-xl transition-all group"

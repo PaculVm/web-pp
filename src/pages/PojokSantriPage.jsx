@@ -23,6 +23,13 @@ export function PojokSantriPage() {
     ? pojokSantri.filter((a) => (a.status || 'published') === 'published')
     : [];
 
+  const safeImage = (url) => {
+    if (!url) return '/images/placeholder.svg';
+    if (url.startsWith('/uploads/')) return url;
+    if (url.startsWith(window.location.origin)) return url;
+    return '/images/placeholder.svg';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.content.trim() || !form.author.trim()) {
@@ -150,7 +157,7 @@ export function PojokSantriPage() {
               <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow h-full flex flex-col">
                 <div className="aspect-video overflow-hidden">
                   <img
-                    src={item.image}
+                    src={safeImage(item.image)}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />

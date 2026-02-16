@@ -1,3 +1,4 @@
+// DOMPurify ada di sini
 import { createContext, useContext, useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 import {
@@ -61,8 +62,18 @@ const sanitizeRichText = (html = '') => {
     .replace(/<p><br><\/p>/g, '')
     .trim();
 
-  return DOMPurify.sanitize(normalized, {
-    USE_PROFILES: { html: true }
+  DOMPurify.sanitize(normalized, {
+    ALLOWED_TAGS: [
+      'p','br','strong','em','u',
+      'ol','ul','li',
+      'h1','h2','h3',
+      'blockquote','a','img'
+    ],
+    ALLOWED_ATTR: [
+      'href','src','alt','title','class'
+    ],
+    FORBID_TAGS: ['style','script','iframe','object','embed'],
+    FORBID_ATTR: ['onerror','onclick','onload']
   });
 };
 
@@ -93,20 +104,26 @@ export function DataProvider({ children }) {
         getVisiMisi(),
         getPengasuh(),
         getPendidikan(),
-        getArticles(1, 200, 'all'),
+        getArticles(1, 200, 'published'),
         getPengumuman(),
         getPendaftaran(),
       ]);
 
       setData({
-        heroSlides: heroSlides || [],
+        heroSlides: Array.isArray(heroSlides) ? heroSlides : [],
         sekilasPandang: sekilasPandang || initialData.sekilasPandang,
         visiMisi: visiMisi || initialData.visiMisi,
-        pengasuh: pengasuh || [],
-        pendidikan: pendidikan || initialData.pendidikan,
-        pojokSantri: pojokSantriResponse?.data || [],
-        pengumuman: pengumuman || [],
-        pendaftaran: pendaftaran || initialData.pendaftaran,
+        pengasuh: Array.isArray(pengasuh) ? pengasuh : [],
+        pendidikan: Array.isArray(pendidikan) ? pendidikan : [],
+        pojokSantri: Array.isArray(pojokSantriResponse?.data)
+          ? pojokSantriResponse.data
+          : [],
+        pengumuman: Array.isArray(pengumuman)
+          ? pengumuman
+          : Array.isArray(pengumuman?.data)
+            ? pengumuman.data
+            : [],
+        pendaftaran: Array.isArray(pendaftaran) ? pendaftaran : [],
       });
     } catch (error) {
       console.error('Failed to fetch data:', error);

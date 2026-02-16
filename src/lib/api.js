@@ -1,168 +1,251 @@
-// Base URL - akan otomatis menyesuaikan environment
+// Same-origin (kosong karena API di domain yang sama)
 const API_BASE = '';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+/**
+ * Ambil cookie by name
+ */
 function getCookie(name) {
   if (typeof document === 'undefined') return null;
-  const entry = document.cookie.split('; ').find((item) => item.startsWith(`${name}=`));
-  return entry ? decodeURIComponent(entry.split('=')[1]) : null;
+  const match = document.cookie.match(
+    new RegExp('(^| )' + name + '=([^;]+)')
+  );
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
+/**
+ * Global API fetch wrapper
+ */
 async function apiFetch(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
-  const token = typeof window !== 'undefined' ? localStorage.getItem('ppds_token') : null;
-  const csrfToken = typeof window !== 'undefined'
-    ? (localStorage.getItem('ppds_csrf') || getCookie('ppds_csrf'))
-    : null;
+
+  const csrfToken =
+    typeof window !== 'undefined'
+      ? getCookie('ppds_csrf')
+      : null;
+
+  const headers = {
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(!SAFE_METHODS.has(method) && csrfToken
+      ? { 'X-CSRF-Token': csrfToken }
+      : {}),
+    ...(options.headers || {}),
+  };
 
   const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(!SAFE_METHODS.has(method) && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-      ...(options.headers || {}),
-    },
+    credentials: 'include', // 🔥 WAJIB untuk httpOnly cookie
     ...options,
+    headers,
   });
 
-  if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || 'Request failed');
+  const contentType = res.headers.get('content-type') || '';
+
+  // 🔥 AUTO LOGOUT JIKA 401
+  if (res.status === 401) {
+    const isAdminRoute = window.location.pathname.startsWith('/admin');
+    
+    if (isAdminRoute) {
+      localStorage.removeItem('ppds_user');
+      window.location.href = '/admin/login';
+    }
+
+    throw new Error('Unauthorized');
   }
 
-  return res.json();
+  if (!res.ok) {
+    if (contentType.includes('application/json')) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Request failed');
+    } else {
+      const text = await res.text();
+      throw new Error(text || 'Request failed');
+    }
+  }
+
+  if (contentType.includes('application/json')) {
+    return res.json();
+  }
+
+  return null;
 }
 
-// ===== PUBLIC =====
-export async function getHero() {
-  return apiFetch('/api/hero.php');
-}
+//
+// =========================
+// ===== PUBLIC API =======
+// =========================
+//
 
-export async function getArticles(page = 1, limit = 6, status = 'published') {
-  return apiFetch(`/api/pojok_santri.php?page=${page}&limit=${limit}&status=${status}`);
-}
+export const getHero = () =>
+  apiFetch('/api/hero.php');
 
-export async function getArticleById(id) {
-  const data = await apiFetch(`/api/pojok_santri.php?id=${id}`);
-  return { data };
-}
+export const getArticles = (page = 1, limit = 6, status = 'published') =>
+  apiFetch(`/api/pojok_santri.php?page=${page}&limit=${limit}&status=${status}`);
 
-export async function getPengumuman() {
-  return apiFetch('/api/pengumuman.php');
-}
+export const getArticleById = (id) =>
+  apiFetch(`/api/pojok_santri.php?id=${id}`);
 
-export async function getPengumumanById(id) {
-  return apiFetch(`/api/pengumuman.php?id=${id}`);
-}
+export const getPengumuman = () =>
+  apiFetch('/api/pengumuman.php');
 
-export async function getSekilasPandang() {
-  return apiFetch('/api/sekilas_pandang.php');
-}
+export const getPengumumanById = (id) =>
+  apiFetch(`/api/pengumuman.php?id=${id}`);
 
-export async function getVisiMisi() {
-  return apiFetch('/api/visi_misi.php');
-}
+export const getSekilasPandang = () =>
+  apiFetch('/api/sekilas_pandang.php');
 
-export async function getPengasuh() {
-  return apiFetch('/api/pengasuh.php');
-}
+export const getVisiMisi = () =>
+  apiFetch('/api/visi_misi.php');
 
-export async function getPendidikan() {
-  return apiFetch('/api/pendidikan.php');
-}
+export const getPengasuh = () =>
+  apiFetch('/api/pengasuh.php');
 
-export async function getPendaftaran() {
-  return apiFetch('/api/pendaftaran.php');
-}
+export const getPendidikan = () =>
+  apiFetch('/api/pendidikan.php');
 
-// ===== ADMIN CRUD =====
-export async function createHeroSlide(payload) {
-  return apiFetch('/api/hero.php', { method: 'POST', body: JSON.stringify(payload) });
-}
+export const getPendaftaran = () =>
+  apiFetch('/api/pendaftaran.php');
 
-export async function updateHeroSlideApi(id, payload) {
-  return apiFetch(`/api/hero.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
+//
+// =========================
+// ===== ADMIN CRUD =======
+// =========================
+//
 
-export async function deleteHeroSlideApi(id) {
-  return apiFetch(`/api/hero.php?id=${id}`, { method: 'DELETE' });
-}
+export const createHeroSlide = (payload) =>
+  apiFetch('/api/hero.php', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 
-export async function updateSekilasPandangApi(payload) {
-  return apiFetch('/api/sekilas_pandang.php', { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const updateHeroSlideApi = (id, payload) =>
+  apiFetch(`/api/hero.php?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function updateVisiMisiApi(payload) {
-  return apiFetch('/api/visi_misi.php', { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const deleteHeroSlideApi = (id) =>
+  apiFetch(`/api/hero.php?id=${id}`, {
+    method: 'DELETE',
+  });
 
-export async function createPengasuh(payload) {
-  return apiFetch('/api/pengasuh.php', { method: 'POST', body: JSON.stringify(payload) });
-}
+export const updateSekilasPandangApi = (payload) =>
+  apiFetch('/api/sekilas_pandang.php', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function updatePengasuhApi(id, payload) {
-  return apiFetch(`/api/pengasuh.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const updateVisiMisiApi = (payload) =>
+  apiFetch('/api/visi_misi.php', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function deletePengasuhApi(id) {
-  return apiFetch(`/api/pengasuh.php?id=${id}`, { method: 'DELETE' });
-}
+export const createPengasuh = (payload) =>
+  apiFetch('/api/pengasuh.php', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 
-export async function updatePendidikanApi(payload) {
-  return apiFetch('/api/pendidikan.php', { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const updatePengasuhApi = (id, payload) =>
+  apiFetch(`/api/pengasuh.php?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function createPojokSantri(payload) {
-  return apiFetch('/api/pojok_santri.php', { method: 'POST', body: JSON.stringify(payload) });
-}
+export const deletePengasuhApi = (id) =>
+  apiFetch(`/api/pengasuh.php?id=${id}`, {
+    method: 'DELETE',
+  });
 
-export async function updatePojokSantriApi(id, payload) {
-  return apiFetch(`/api/pojok_santri.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const updatePendidikanApi = (payload) =>
+  apiFetch('/api/pendidikan.php', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function deletePojokSantriApi(id) {
-  return apiFetch(`/api/pojok_santri.php?id=${id}`, { method: 'DELETE' });
-}
+export const createPojokSantri = (payload) =>
+  apiFetch('/api/pojok_santri.php', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 
-export async function createPengumuman(payload) {
-  return apiFetch('/api/pengumuman.php', { method: 'POST', body: JSON.stringify(payload) });
-}
+export const updatePojokSantriApi = (id, payload) =>
+  apiFetch(`/api/pojok_santri.php?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function updatePengumumanApi(id, payload) {
-  return apiFetch(`/api/pengumuman.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const deletePojokSantriApi = (id) =>
+  apiFetch(`/api/pojok_santri.php?id=${id}`, {
+    method: 'DELETE',
+  });
 
-export async function deletePengumumanApi(id) {
-  return apiFetch(`/api/pengumuman.php?id=${id}`, { method: 'DELETE' });
-}
+export const createPengumuman = (payload) =>
+  apiFetch('/api/pengumuman.php', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 
-export async function updatePendaftaranApi(payload) {
-  return apiFetch('/api/pendaftaran.php', { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const updatePengumumanApi = (id, payload) =>
+  apiFetch(`/api/pengumuman.php?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-// ===== USERS =====
-export async function loginApi(payload) {
-  return apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
-}
+export const deletePengumumanApi = (id) =>
+  apiFetch(`/api/pengumuman.php?id=${id}`, {
+    method: 'DELETE',
+  });
 
-export async function logoutApi() {
-  return apiFetch('/api/auth/logout', { method: 'POST' });
-}
+export const updatePendaftaranApi = (payload) =>
+  apiFetch('/api/pendaftaran.php', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
-export async function getUsers() {
-  return apiFetch('/api/users.php');
-}
+//
+// =========================
+// ===== AUTH ==============
+// =========================
+//
 
-export async function createUser(payload) {
-  return apiFetch('/api/users.php', { method: 'POST', body: JSON.stringify(payload) });
-}
+export const loginApi = (payload) =>
+  apiFetch('/api/login.php', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 
-export async function updateUserApi(id, payload) {
-  return apiFetch(`/api/users.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
+export const logoutApi = () =>
+  apiFetch('/api/logout.php', {
+    method: 'POST',
+  });
 
-export async function deleteUserApi(id) {
-  return apiFetch(`/api/users.php?id=${id}`, { method: 'DELETE' });
-}
+//
+// =========================
+// ===== USERS ============
+// =========================
+//
+
+export const getRoles = () =>
+  apiFetch('/api/roles.php');
+
+export const getUsers = () =>
+  apiFetch('/api/users.php');
+
+export const createUser = (payload) =>
+  apiFetch('/api/users.php', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+export const updateUserApi = (id, payload) =>
+  apiFetch(`/api/users.php?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+
+export const deleteUserApi = (id) =>
+  apiFetch(`/api/users.php?id=${id}`, {
+    method: 'DELETE',
+  });

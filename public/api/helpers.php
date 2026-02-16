@@ -1,8 +1,26 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+
+// ===== SECURITY HEADERS =====
+header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: no-referrer');
+
+// ===== CORS WHITELIST =====
+$allowedOrigins = [
+    'https://darussalampanusupan.net',
+    'https://www.darussalampanusupan.net'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if (in_array($origin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: $origin");
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Credentials: true');
 
 // Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -10,26 +28,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-function jsonResponse($data, $code = 200) {
+// ===== RESPONSE HELPERS =====
+function jsonResponse($data, $code = 200)
+{
     http_response_code($code);
-    echo json_encode($data);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-function jsonError($message, $code = 400) {
+function jsonError($message, $code = 400)
+{
     http_response_code($code);
-    echo json_encode(['error' => $message]);
+    echo json_encode([
+        'success' => false,
+        'error' => $message
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-function getJsonInput() {
+// ===== JSON INPUT SAFE =====
+function getJsonInput()
+{
     $input = file_get_contents('php://input');
-    return json_decode($input, true) ?: [];
+    $decoded = json_decode($input, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        jsonError('Invalid JSON format', 400);
+    }
+
+    return $decoded ?: [];
 }
 
-function safeJsonDecode($value, $fallback = []) {
+function safeJsonDecode($value, $fallback = [])
+{
     if ($value === null || $value === '') return $fallback;
     if (is_array($value)) return $value;
+
     $decoded = json_decode($value, true);
-    return $decoded !== null ? $decoded : $fallback;
+    return (json_last_error() === JSON_ERROR_NONE) ? $decoded : $fallback;
 }

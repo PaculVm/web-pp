@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getRoles } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Shield, Plus, Pencil, Trash2, Save, Search, UserCircle, AlertTriangle, Key, AtSign, User } from 'lucide-react';
 import { useNotification } from '../../contexts/NotificationContext';
 import { Modal, ConfirmDialog } from '../../components/ui/Dialog';
 
-const emptyForm = { name: '', username: '', password: '', role: 'editor' };
+const emptyForm = { name: '', username: '', password: '', role_id: '' };
 
 export function AdminUsers() {
   const { user: currentUser, users, addUser, updateUser, deleteUser } = useAuth();
@@ -14,8 +15,9 @@ export function AdminUsers() {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, user: null });
+  const [roles, setRoles] = useState([]);
 
-  if (currentUser?.role !== 'admin') {
+  if ((currentUser?.level || 0) < 5) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] animate-in fade-in zoom-in duration-300">
         <div className="text-center p-6 bg-white rounded-2xl border border-slate-200 shadow-lg">
@@ -29,11 +31,15 @@ export function AdminUsers() {
     );
   }
 
+  const availableRoles = roles.filter(
+    r => r.level <= currentUser.level
+  );
+
   const filteredUsers = users.filter(
     (u) =>
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.username.toLowerCase().includes(search.toLowerCase()) ||
-      u.role.toLowerCase().includes(search.toLowerCase())
+      (u.role || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const openAdd = () => {
@@ -44,50 +50,98 @@ export function AdminUsers() {
 
   const openEdit = (u) => {
     setEditingId(u.id);
-    setForm({ name: u.name, username: u.username, password: '', role: u.role });
+    setForm({
+      name: u.name,
+      username: u.username,
+      password: '',
+      role_id: roles.find(r => r.name === u.role)?.id || ''
+    });
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.username.trim()) {
       showToast('Nama dan Username wajib diisi', 'error');
       return;
     }
+
     if (!editingId && !form.password.trim()) {
       showToast('Password wajib diisi untuk user baru', 'error');
       return;
     }
-    
-    const action = editingId ? updateUser(editingId, form) : addUser(form);
-    
-    if (action) {
-      showToast(`User berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}`, 'success');
-      setShowForm(false);
-    } else {
-      showToast('Username sudah digunakan', 'error');
+
+    if (!form.role_id) {
+      showToast('Role wajib dipilih', 'error');
+      return;
+    }
+
+    try {
+      const success = editingId
+        ? await updateUser(editingId, form)
+        : await addUser(form);
+
+      if (success) {
+        showToast(
+          `User berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}`,
+          'success'
+        );
+        setShowForm(false);
+      } else {
+        showToast('Username sudah digunakan', 'error');
+      }
+    } catch {
+      showToast('Terjadi kesalahan sistem', 'error');
     }
   };
 
-  const handleDelete = (id) => {
-    deleteUser(id);
-    showToast('User berhasil dihapus', 'success');
+  const handleDelete = async (id) => {
+    try {
+      await deleteUser(id);
+      showToast('User berhasil dihapus', 'success');
+    } catch {
+      showToast('Gagal menghapus user', 'error');
+    }
     setDeleteConfirm({ isOpen: false, user: null });
   };
 
-  const getRoleBadge = (role) => {
-    const isAdmin = role === 'admin';
+  const getRoleBadge = (level, roleName) => {
+    const isSuper = level >= 10;
+    const isAdmin = level >= 5;
+
+    let color = 'bg-blue-50 text-blue-600 border-blue-100';
+    let icon = <UserCircle size={10} />;
+
+    if (isSuper) {
+      color = 'bg-purple-50 text-purple-600 border-purple-100';
+      icon = <Shield size={10} />;
+    } else if (isAdmin) {
+      color = 'bg-rose-50 text-rose-600 border-rose-100';
+      icon = <Shield size={10} />;
+    }
+
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-        isAdmin ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-100'
-      }`}>
-        {isAdmin ? <Shield size={10} /> : <UserCircle size={10} />}
-        {role}
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${color}`}>
+        {icon}
+        {roleName}
       </span>
     );
   };
 
+  useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        const data = await getRoles();
+        setRoles(data || []);
+      } catch (err) {
+        console.error('Gagal memuat roles', err);
+      }
+    };
+
+    loadRoles();
+  }, []);
+
   return (
-    <div className="max-w-[1280px] mx-auto animate-in fade-in duration-500 pb-6">
+    <div className="max-w-7xl mx-auto animate-in fade-in duration-500 pb-6">
       {/* Header - Compact */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
         <div>
@@ -140,7 +194,11 @@ export function AdminUsers() {
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-inner ${
-                        u.role === 'admin' ? 'bg-gradient-to-br from-rose-400 to-rose-600' : 'bg-gradient-to-br from-blue-400 to-blue-600'
+                        u.level >= 10
+                          ? 'bg-linear-to-br from-purple-400 to-purple-600'
+                          : u.level >= 5
+                          ? 'bg-linear-to-br from-rose-400 to-rose-600'
+                          : 'bg-linear-to-br from-blue-400 to-blue-600'
                       }`}>
                         {u.name.charAt(0).toUpperCase()}
                       </div>
@@ -158,7 +216,7 @@ export function AdminUsers() {
                       <span className="text-[10px] font-bold text-slate-600">{u.username}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3">{getRoleBadge(u.role)}</td>
+                  <td className="px-5 py-3">{getRoleBadge(u.level, u.role)}</td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEdit(u)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg shadow-sm transition-all border border-transparent hover:border-blue-100">
@@ -233,12 +291,16 @@ export function AdminUsers() {
                 <Shield size={10} /> Otoritas
               </label>
               <select
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                value={form.role_id}
+                onChange={(e) => setForm({ ...form, role_id: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white outline-none text-sm font-bold"
               >
-                <option value="admin">Admin</option>
-                <option value="editor">Editor</option>
+                <option value="">Pilih Role</option>
+                {availableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -257,7 +319,7 @@ export function AdminUsers() {
           
           <div className="pt-3 flex gap-2">
             <button onClick={() => setShowForm(false)} className="flex-1 py-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Batal</button>
-            <button onClick={handleSave} className="flex-[2] py-2 bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all flex items-center justify-center gap-1.5">
+            <button onClick={handleSave} className="flex-2 py-2 bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all flex items-center justify-center gap-1.5">
               <Save size={13} /> Simpan
             </button>
           </div>

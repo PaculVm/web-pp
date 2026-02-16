@@ -20,7 +20,12 @@ export function AdminVisiMisi() {
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const addMisi = () => setMisi([...misi, '']);
+  const MAX_MISI = 20;
+  const addMisi = () => {
+    if (misi.length >= MAX_MISI) return;
+    setMisi([...misi, '']);
+  };
+
   const removeMisi = (index) => setMisi(misi.filter((_, i) => i !== index));
   const updateMisi = (index, value) => {
     const updated = [...misi];
@@ -29,7 +34,7 @@ export function AdminVisiMisi() {
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
       {/* Header - Compact */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div>
@@ -128,7 +133,7 @@ export function AdminVisiMisi() {
             </div>
             
             <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.1em]">
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                 Total: {misi.length} Point Misi
               </p>
             </div>

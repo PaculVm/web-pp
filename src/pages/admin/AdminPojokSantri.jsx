@@ -56,33 +56,50 @@ export function AdminPojokSantri() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim() || !form.author.trim()) {
       showToast('Judul, Penulis, dan Konten wajib diisi', 'error');
       return;
     }
-    
-    if (editingId) {
-      updatePojokSantri(editingId, form);
-      showToast('Artikel berhasil diperbarui', 'success');
-    } else {
-      addPojokSantri(form);
-      showToast('Artikel baru berhasil ditambahkan', 'success');
+
+    try {
+      if (editingId) {
+        await updatePojokSantri(editingId, form);
+        showToast('Artikel berhasil diperbarui', 'success');
+      } else {
+        await addPojokSantri(form);
+        showToast('Artikel baru berhasil ditambahkan', 'success');
+      }
+
+      resetForm();
+    } catch (err) {
+      showToast('Gagal menyimpan artikel', 'error');
     }
-    resetForm();
   };
 
-  const handleDelete = (id) => {
-    deletePojokSantri(id);
-    showToast('Artikel telah dihapus', 'success');
+  const handleDelete = async (id) => {
+    try {
+      await deletePojokSantri(id);
+      showToast('Artikel telah dihapus', 'success');
+    } catch {
+      showToast('Gagal menghapus artikel', 'error');
+    }
+
     setDeleteConfirm({ isOpen: false, id: null });
   };
 
-  const filteredArticles = pojokSantri.filter(
-    (a) =>
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.author.toLowerCase().includes(search.toLowerCase()) ||
-      a.category.toLowerCase().includes(search.toLowerCase())
+  const safeImage = (url) => {
+    if (!url) return null;
+    if (url.startsWith('/uploads/') || url.startsWith(window.location.origin)) {
+      return url;
+    }
+    return null;
+  };
+
+  const filteredArticles = pojokSantri.filter((a) =>
+    (a.title || '').toLowerCase().includes(search.toLowerCase()) ||
+    (a.author || '').toLowerCase().includes(search.toLowerCase()) ||
+    (a.category || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -239,7 +256,7 @@ export function AdminPojokSantri() {
               <div className="flex flex-col sm:flex-row gap-4">
                 {article.image && (
                   <img
-                    src={article.image}
+                    src={safeImage(article.image)}
                     alt={article.title}
                     className="w-full sm:w-32 h-24 object-cover rounded-lg shrink-0"
                   />

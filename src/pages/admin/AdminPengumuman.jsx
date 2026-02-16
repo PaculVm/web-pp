@@ -26,6 +26,9 @@ export function AdminPengumuman() {
     setShowForm(false);
   };
 
+  const stripHtml = (html) =>
+    html.replace(/<[^>]+>/g, '');
+
   const handleEdit = (item) => {
     setForm({
       title: item.title || '',
@@ -39,24 +42,38 @@ export function AdminPengumuman() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim()) {
       showToast('Judul dan Konten wajib diisi', 'error');
       return;
     }
-    editingId ? updatePengumuman(editingId, form) : addPengumuman(form);
-    showToast(`Pengumuman berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}`, 'success');
-    resetForm();
+
+    try {
+      if (editingId) {
+        await updatePengumuman(editingId, form);
+      } else {
+        await addPengumuman(form);
+      }
+
+      showToast(`Pengumuman berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}`, 'success');
+      resetForm();
+    } catch (err) {
+      showToast(err.message || 'Terjadi kesalahan', 'error');
+    }
   };
 
-  const handleDelete = (id) => {
-    deletePengumuman(id);
-    showToast('Pengumuman berhasil dihapus', 'success');
+  const handleDelete = async (id) => {
+    try {
+      await deletePengumuman(id);
+      showToast('Pengumuman berhasil dihapus', 'success');
+    } catch (err) {
+      showToast('Gagal menghapus', 'error');
+    }
     setDeleteConfirm({ isOpen: false, id: null });
   };
 
   const filteredPengumuman = pengumuman.filter(
-    (a) => a.title.toLowerCase().includes(search.toLowerCase())
+    (a) => (a.title || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -214,7 +231,7 @@ export function AdminPengumuman() {
                       {item.title}
                     </h3>
                     <p className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-1 leading-relaxed">
-                      {item.content}
+                      {stripHtml(item.content)}
                     </p>
                   </div>
 

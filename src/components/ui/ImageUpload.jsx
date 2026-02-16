@@ -8,10 +8,26 @@ export function ImageUpload({ value, onChange, label = 'Gambar', className = '' 
   const fileInputRef = useRef(null);
 
   const uploadFile = async (file) => {
-    // Validasi sisi client
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      setError('Tipe file tidak diizinkan. Gunakan JPG, PNG, GIF, WebP, SVG atau PDF.');
+    if (uploading) return;
+
+    // Allowed MIME types
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf'
+    ];
+
+    // Allowed extensions
+    const allowedExtensions = [
+      'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'
+    ];
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+
+    if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(ext)) {
+      setError('Tipe file tidak diizinkan. Gunakan JPG, PNG, GIF, WebP, atau PDF.');
       return;
     }
 
@@ -28,22 +44,25 @@ export function ImageUpload({ value, onChange, label = 'Gambar', className = '' 
       const formData = new FormData();
       formData.append('image', file);
 
-      const token = localStorage.getItem('ppds_token');
       const res = await fetch('/api/upload.php', {
         method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        credentials: 'include', // 🔥 WAJIB untuk httpOnly cookie
         body: formData,
       });
 
+      const contentType = res.headers.get('content-type') || '';
+
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Upload gagal');
+        if (contentType.includes('application/json')) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Upload gagal');
+        }
+        throw new Error('Upload gagal');
       }
 
       const data = await res.json();
       onChange(data.url);
+
     } catch (err) {
       setError(err.message || 'Upload gagal. Silakan coba lagi.');
     } finally {
@@ -169,7 +188,7 @@ export function ImageUpload({ value, onChange, label = 'Gambar', className = '' 
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+        accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
         onChange={handleFileSelect}
         className="hidden"
       />

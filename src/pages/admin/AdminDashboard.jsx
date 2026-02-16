@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { Navigate, Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { 
   Users, FileText, Megaphone, Image, GraduationCap, 
@@ -7,6 +8,11 @@ import {
 } from 'lucide-react';
 
 export function AdminDashboard() {
+  const { user } = useAuth();
+  if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+    return <Navigate to="/login" replace />;
+  }
+
   const { pengasuh, pojokSantri, pengumuman, heroSlides } = useData();
 
   const stats = [
@@ -35,7 +41,7 @@ export function AdminDashboard() {
           </div>
           <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Ringkasan Panel</h1>
         </div>
-        <p className="text-xs text-slate-500 font-medium ml-9">Selamat bekerja kembali, Admin PP Darussalam.</p>
+        <p className="text-xs text-slate-500 font-medium ml-9">Selamat bekerja kembali, {user?.name}</p>
       </div>
 
       {/* Stats Grid - Compact */}
