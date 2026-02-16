@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lock, User, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -17,7 +17,7 @@ export function Login() {
   
   const { user } = useAuth();
   if (user) {
-    return <navigate to="/admin" replace />;
+    return <Navigate to="/admin" replace />;
   }
 
   const from = location.state?.from?.pathname || '/admin';

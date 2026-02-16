@@ -32,7 +32,11 @@ import { Forbidden } from './pages/admin/Forbidden';
 
 // 1. Tambahkan RequireGuest untuk memproteksi halaman login
 function RequireGuest({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
 
   if (user) {
     return <Navigate to="/admin" replace />;
@@ -43,8 +47,12 @@ function RequireGuest({ children }) {
 
 // 2. Replace RequireAdmin dengan RequireLevel (Lebih Fleksibel)
 function RequireLevel({ minLevel = 1, children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
+
+  if (loading) {
+    return null;
+  }
 
   if (!user) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;

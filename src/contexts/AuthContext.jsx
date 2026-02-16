@@ -89,6 +89,7 @@ export function AuthProvider({ children }) {
       try {
         const res = await fetch("/api/me.php", {
           credentials: "include",
+          cache: "no-store",
         });
 
         if (!res.ok) {
@@ -190,6 +191,7 @@ export function AuthProvider({ children }) {
       if (user && String(user.id) === String(id)) {
         const res = await fetch("/api/me.php", {
           credentials: "include",
+          cache: "no-store",
         });
 
         if (res.ok) {
