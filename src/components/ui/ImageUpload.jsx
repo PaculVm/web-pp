@@ -1,6 +1,12 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Image, Loader2 } from 'lucide-react';
 
+const getCookie = (name) => {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : '';
+};
+
 export function ImageUpload({ value, onChange, label = 'Gambar', className = '' }) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -42,12 +48,15 @@ export function ImageUpload({ value, onChange, label = 'Gambar', className = '' 
 
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file);
+
+      const csrfToken = getCookie('ppds_csrf');
 
       const res = await fetch('/api/upload.php', {
         method: 'POST',
         credentials: 'include', // 🔥 WAJIB untuk httpOnly cookie
         body: formData,
+        ...(csrfToken ? { headers: { 'X-CSRF-Token': csrfToken } } : {}),
       });
 
       const contentType = res.headers.get('content-type') || '';
@@ -169,7 +178,7 @@ export function ImageUpload({ value, onChange, label = 'Gambar', className = '' 
                 <p className="text-sm font-medium text-gray-700">
                   Klik untuk upload atau <span className="text-emerald-600">drag & drop</span>
                 </p>
-                <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP, SVG (Maks. 5MB)</p>
+                <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP, PDF (Maks. 5MB)</p>
               </div>
             </div>
           )}
