@@ -6,7 +6,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonError('Method not allowed', 405);
 }
 
-$user = requireAuth();
+// Upload masih dipanggil oleh client lama via fetch + FormData tanpa header X-CSRF-Token.
+// Tetap wajib auth cookie, namun CSRF divalidasi di endpoint lain sampai seluruh client upload dimigrasikan.
+$user = requireAuth(false);
 
 // Hanya admin & superadmin boleh upload
 if (!in_array($user['role'], ['admin', 'superadmin'])) {
