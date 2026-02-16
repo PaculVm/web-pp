@@ -18,6 +18,12 @@ const isValidUrl = (url) => {
   }
 };
 
+const getCookie = (name) => {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : '';
+};
+
 export function AdminPendaftaran() {
   const { pendaftaran, updatePendaftaran } = useData();
   const [saved, setSaved] = useState(false);
@@ -60,10 +66,13 @@ export function AdminPendaftaran() {
     fd.append('file', file);
 
     try {
+      const csrfToken = getCookie('ppds_csrf');
+
       const response = await fetch('/api/upload.php', {
         method: 'POST',
         credentials: 'include',
         body: fd,
+        ...(csrfToken ? { headers: { 'X-CSRF-Token': csrfToken } } : {}),
       });
 
       if (!response.ok) throw new Error('Upload gagal');
