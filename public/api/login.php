@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = getJsonInput();
 $username = trim($input['username'] ?? '');
 $password = $input['password'] ?? '';
-$ip = $_SERVER['REMOTE_ADDR'];
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
 if (!$username || !$password) {
     jsonError('Username dan password wajib diisi', 400);
@@ -98,18 +98,7 @@ $payload = [
 ];
 
 $token = createJWT($payload);
-
-setcookie(
-    'ppds_token',
-    $token,
-    [
-        'expires' => time() + 3600,
-        'path' => '/',
-        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-        'httponly' => true,
-        'samesite' => 'Strict'
-    ]
-);
+setAuthCookies($token);
 
 jsonResponse([
     'success' => true,
