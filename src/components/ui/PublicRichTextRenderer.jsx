@@ -1,9 +1,12 @@
-export function PublicRichTextRenderer({ content }) {
+import { cn } from '../../utils/cn';
+
+export function PublicRichTextRenderer({ content, className }) {
   if (!content) return null;
 
   return (
     <div
-      className="
+      className={cn(
+        `
         prose max-w-none
         text-gray-700
         leading-relaxed
@@ -92,8 +95,10 @@ export function PublicRichTextRenderer({ content }) {
         [&_.ql-align-right]:text-right
         [&_.ql-align-justify]:text-justify
         
-        wrap-break-word
-      "
+        break-words
+      `,
+        className
+      )}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   );

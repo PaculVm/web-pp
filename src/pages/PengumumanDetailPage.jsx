@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { PublicLayout } from '../components/PublicLayout';
 import { useData } from '../contexts/DataContext';
 import { ArrowLeft, Calendar } from 'lucide-react';
+import { PublicRichTextRenderer } from '../components/ui/PublicRichTextRenderer';
 
 export function PengumumanDetailPage() {
   const { id } = useParams();
@@ -52,11 +53,7 @@ export function PengumumanDetailPage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
-          <div className="prose prose-lg max-w-none">
-            {item.content.split('\n\n').map((paragraph, index) => (
-              <p key={index} className="text-gray-700 leading-relaxed mb-5 whitespace-pre-line">{paragraph}</p>
-            ))}
-          </div>
+          <PublicRichTextRenderer content={item.content} className="prose-lg max-w-none" />
         </div>
       </div>
     </PublicLayout>
