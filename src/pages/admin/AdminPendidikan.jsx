@@ -7,6 +7,7 @@ const cloneArray = (value) => JSON.parse(JSON.stringify(Array.isArray(value) ? v
 export function AdminPendidikan() {
   const { pendidikan, updatePendidikan } = useData();
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [activeTab, setActiveTab] = useState('formal');
 
   const [formal, setFormal] = useState(cloneArray(pendidikan?.formal));
@@ -23,15 +24,23 @@ export function AdminPendidikan() {
     setSchedule(cloneArray(pendidikan?.schedule));
   }, [pendidikan]);
 
-  const handleSave = () => {
-    updatePendidikan({
-      formal,
-      nonFormal,
-      extracurriculars: extracurriculars.filter((e) => e.trim() !== ''),
-      schedule,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    setSaveError('');
+
+    try {
+      await updatePendidikan({
+        formal,
+        nonFormal,
+        extracurriculars: extracurriculars.filter((e) => e.trim() !== ''),
+        schedule,
+      });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      setSaved(false);
+      setSaveError(error?.message || 'Gagal menyimpan data pendidikan.');
+    }
   };
 
   const updateFormalField = (index, field, value) => {
@@ -165,6 +174,12 @@ export function AdminPendidikan() {
             </button>
           ))}
         </div>
+
+        {saveError && (
+          <div className="mt-3 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+            {saveError}
+          </div>
+        )}
       </div>
 
       <div className="pb-6">
