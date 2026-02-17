@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Plus, Trash2, X, Save, Edit3, BookOpen, Search } from 'lucide-react';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -7,7 +7,7 @@ import { ImageUpload } from '../../components/ui/ImageUpload';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
 
 export function AdminPojokSantri() {
-  const { pojokSantri, addPojokSantri, updatePojokSantri, deletePojokSantri } = useData();
+  const { pojokSantri, addPojokSantri, updatePojokSantri, deletePojokSantri, refreshPojokSantri } = useData();
   const { showToast } = useNotification();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -25,6 +25,12 @@ export function AdminPojokSantri() {
   });
 
   const categories = ['Prestasi', 'Tips & Trik', 'Kegiatan', 'Opini', 'Cerita'];
+
+  useEffect(() => {
+    refreshPojokSantri('all').catch(() => {
+      showToast('Gagal memuat data artikel dari database', 'error');
+    });
+  }, [refreshPojokSantri, showToast]);
 
   const resetForm = () => {
     setForm({

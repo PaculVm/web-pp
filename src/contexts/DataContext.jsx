@@ -1,5 +1,5 @@
 // DOMPurify ada di sini
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 import {
   getHero,
@@ -89,14 +89,7 @@ export function DataProvider({ children }) {
     try {
       setLoading(true);
 
-      const prefersAdminArticles =
-        typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-
-      const articleStatus = prefersAdminArticles ? 'all' : 'published';
-
-      const articlesPromise = getArticles(1, 200, articleStatus).catch(() =>
-        getArticles(1, 200, 'published')
-      );
+      const articlesPromise = getArticles(1, 200, 'published');
 
       const [
         heroSlides,
@@ -295,6 +288,18 @@ export function DataProvider({ children }) {
   /* ===== POJOK SANTRI ======== */
   /* ============================= */
 
+
+  const refreshPojokSantri = useCallback(async (status = 'published') => {
+    const response = await getArticles(1, 200, status);
+
+    setData((prev) => ({
+      ...prev,
+      pojokSantri: Array.isArray(response?.data) ? response.data : [],
+    }));
+
+    return response;
+  }, []);
+
   const addPojokSantri = async (article) => {
     const cleaned = {
       ...article,
@@ -304,11 +309,7 @@ export function DataProvider({ children }) {
     const created = await createPojokSantri(cleaned);
 
     if (!created?.id) {
-      const latest = await getArticles(1, 200, 'all');
-      setData((prev) => ({
-        ...prev,
-        pojokSantri: Array.isArray(latest?.data) ? latest.data : prev.pojokSantri,
-      }));
+      await refreshPojokSantri('all');
       return;
     }
 
@@ -327,11 +328,7 @@ export function DataProvider({ children }) {
     const updated = await updatePojokSantriApi(id, cleaned);
 
     if (!updated?.id) {
-      const latest = await getArticles(1, 200, 'all');
-      setData((prev) => ({
-        ...prev,
-        pojokSantri: Array.isArray(latest?.data) ? latest.data : prev.pojokSantri,
-      }));
+      await refreshPojokSantri('all');
       return;
     }
 
@@ -463,6 +460,7 @@ export function DataProvider({ children }) {
         updatePengumuman,
         deletePengumuman,
         updatePendaftaran,
+        refreshPojokSantri,
       }}
     >
       {children}

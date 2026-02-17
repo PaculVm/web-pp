@@ -157,13 +157,35 @@ switch ($method) {
         break;
 
     case 'POST':
-        requireAdmin();
+        $authUser = getAuthUser();
+
+        if ($authUser) {
+            requireAdmin();
+        } else {
+            // Endpoint kirim artikel dari halaman publik.
+            // Batasi request agar tidak mudah disalahgunakan bot/spam.
+            rateLimit(20, 60, 3);
+        }
 
         $input = getJsonInput();
 
-        $status = in_array($input['status'] ?? 'draft', $allowedStatus)
-            ? $input['status']
-            : 'draft';
+        $title = trim($input['title'] ?? '');
+        $content = sanitizeContent($input['content'] ?? '');
+        $author = trim($input['author'] ?? '');
+        $authorRole = trim($input['authorRole'] ?? '');
+
+        if ($title === '' || $content === '' || $author === '') {
+            jsonError('Judul, isi, dan nama penulis wajib diisi', 422);
+        }
+
+        $isAdminSubmission = (bool)$authUser;
+
+        $status = 'draft';
+        if ($isAdminSubmission) {
+            $status = in_array($input['status'] ?? 'draft', $allowedStatus)
+                ? $input['status']
+                : 'draft';
+        }
 
         $stmt = $pdo->prepare(
             'INSERT INTO pojok_santri
@@ -172,13 +194,13 @@ switch ($method) {
         );
 
         $stmt->execute([
-            trim($input['title'] ?? ''),
-            sanitizeContent($input['content'] ?? ''),
-            trim($input['author'] ?? ''),
-            trim($input['authorRole'] ?? ''),
-            $input['date'] ?? date('Y-m-d'),
-            sanitizeUrl($input['image'] ?? ''),
-            trim($input['category'] ?? 'Kegiatan'),
+            $title,
+            $content,
+            $author,
+            $authorRole,
+            $isAdminSubmission ? ($input['date'] ?? date('Y-m-d')) : date('Y-m-d'),
+            $isAdminSubmission ? sanitizeUrl($input['image'] ?? '') : '',
+            trim($input['category'] ?? 'Cerita'),
             $status
         ]);
 
