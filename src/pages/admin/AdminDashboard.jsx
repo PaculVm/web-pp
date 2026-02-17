@@ -1,5 +1,5 @@
 import { useAuth } from '../../contexts/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { 
   Users, FileText, Megaphone, Image, GraduationCap, 
@@ -9,9 +9,6 @@ import {
 
 export function AdminDashboard() {
   const { user } = useAuth();
-  if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
-    return <Navigate to="/login" replace />;
-  }
 
   const { pengasuh, pojokSantri, pengumuman, heroSlides } = useData();
 
