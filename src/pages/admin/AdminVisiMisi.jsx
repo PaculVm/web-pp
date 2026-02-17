@@ -7,6 +7,8 @@ export function AdminVisiMisi() {
   const [visi, setVisi] = useState(visiMisi.visi);
   const [misi, setMisi] = useState([...visiMisi.misi]);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   // Sync when visiMisi updates from context (e.g., after reload)
   useEffect(() => {
@@ -14,10 +16,18 @@ export function AdminVisiMisi() {
     setMisi([...(visiMisi.misi || [])]);
   }, [visiMisi]);
 
-  const handleSave = () => {
-    updateVisiMisi({ visi, misi: misi.filter((m) => m.trim() !== '') });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      await updateVisiMisi({ visi, misi: misi.filter((m) => m.trim() !== '') });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err?.message || 'Gagal menyimpan Visi & Misi.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const MAX_MISI = 20;
@@ -49,15 +59,22 @@ export function AdminVisiMisi() {
         
         <button
           onClick={handleSave}
+          disabled={saving}
           className={`w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-md active:scale-95 ${
             saved 
               ? 'bg-emerald-100 text-emerald-600' 
-              : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200'
+              : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200 disabled:opacity-60 disabled:cursor-not-allowed'
           }`}
         >
-          {saved ? <><CheckCircle size={14} /> Berhasil</> : <><Save size={14} /> Simpan</>}
+          {saving ? <><Save size={14} /> Menyimpan...</> : saved ? <><CheckCircle size={14} /> Berhasil</> : <><Save size={14} /> Simpan</>}
         </button>
       </div>
+
+      {error ? (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700">
+          {error}
+        </div>
+      ) : null}
 
       {/* Main Grid: Visi (Kiri) & Misi (Kanan) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
