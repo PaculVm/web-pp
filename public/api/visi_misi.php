@@ -38,7 +38,13 @@ function sanitizeArray($value)
 
 function mapVisiMisi($row)
 {
-    if (!$row) return null;
+    if (!$row) {
+        return [
+            'id' => 1,
+            'visi' => '',
+            'misi' => []
+        ];
+    }
 
     return [
         'id' => $row['id'],
@@ -60,17 +66,18 @@ switch ($method) {
         requireAdmin(); // 🔥 WAJIB AUTH
 
         $input = getJsonInput();
+        $visi = sanitizeContent($input['visi'] ?? '');
+        $misi = json_encode(sanitizeArray($input['misi'] ?? []));
 
         $stmt = $pdo->prepare(
-            'UPDATE visi_misi SET
-             visi = ?, misi = ?
-             WHERE id = 1'
+            'INSERT INTO visi_misi (id, visi, misi)
+             VALUES (1, ?, ?)
+             ON DUPLICATE KEY UPDATE
+             visi = VALUES(visi),
+             misi = VALUES(misi)'
         );
 
-        $stmt->execute([
-            sanitizeContent($input['visi'] ?? ''),
-            json_encode(sanitizeArray($input['misi'] ?? []))
-        ]);
+        $stmt->execute([$visi, $misi]);
 
         $stmt = $pdo->query(
             'SELECT * FROM visi_misi WHERE id = 1'

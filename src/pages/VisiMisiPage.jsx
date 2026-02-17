@@ -3,15 +3,20 @@ import { useData } from '../contexts/DataContext';
 import { Eye, Target, CheckCircle } from 'lucide-react';
 
 export function VisiMisiPage() {
-  const { visiMisi } = useData();
+  const { visiMisi, loading } = useData();
 
-  if (!visiMisi?.visi) {
+  if (loading) {
     return (
       <PublicLayout>
         <div className="max-w-4xl mx-auto px-4 py-20 text-center text-gray-500">Memuat konten...</div>
       </PublicLayout>
     );
   }
+
+  const visiText = (visiMisi?.visi || '').trim();
+  const misiItems = Array.isArray(visiMisi?.misi)
+    ? visiMisi.misi.filter((item) => String(item || '').trim() !== '')
+    : [];
 
   return (
     <PublicLayout>
@@ -32,7 +37,7 @@ export function VisiMisiPage() {
             <h2 className="text-2xl md:text-3xl font-bold">Visi</h2>
           </div>
           <p className="text-lg md:text-xl leading-relaxed text-emerald-50">
-            "{visiMisi.visi}"
+            {visiText || 'Visi pesantren belum diatur.'}
           </p>
         </div>
 
@@ -45,14 +50,18 @@ export function VisiMisiPage() {
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Misi</h2>
           </div>
           <div className="space-y-5">
-            {visiMisi.misi.map((item, index) => (
-              <div key={index} className="flex items-start gap-4">
-                <div className="shrink-0 mt-0.5">
-                  <CheckCircle size={22} className="text-emerald-500" />
+            {misiItems.length === 0 ? (
+              <p className="text-gray-500">Misi pesantren belum diatur.</p>
+            ) : (
+              misiItems.map((item, index) => (
+                <div key={index} className="flex items-start gap-4">
+                  <div className="shrink-0 mt-0.5">
+                    <CheckCircle size={22} className="text-emerald-500" />
+                  </div>
+                  <p className="text-gray-700 leading-relaxed">{item}</p>
                 </div>
-                <p className="text-gray-700 leading-relaxed">{item}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
