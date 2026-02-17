@@ -77,6 +77,16 @@ const sanitizeRichText = (html = '') => {
   });
 };
 
+const normalizeCollection = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.items)) return response.items;
+  return [];
+};
+
+const settledValue = (result, fallback) =>
+  result?.status === 'fulfilled' ? result.value : fallback;
+
 export function DataProvider({ children }) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(true);
@@ -100,7 +110,7 @@ export function DataProvider({ children }) {
         pojokSantriResponse,
         pengumuman,
         pendaftaran,
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         getHero(),
         getSekilasPandang(),
         getVisiMisi(),
@@ -111,21 +121,24 @@ export function DataProvider({ children }) {
         getPendaftaran(),
       ]);
 
+      const heroSlidesValue = settledValue(heroSlides, []);
+      const sekilasPandangValue = settledValue(sekilasPandang, null);
+      const visiMisiValue = settledValue(visiMisi, null);
+      const pengasuhValue = settledValue(pengasuh, []);
+      const pendidikanValue = settledValue(pendidikan, null);
+      const pojokValue = settledValue(pojokSantriResponse, []);
+      const pengumumanValue = settledValue(pengumuman, []);
+      const pendaftaranValue = settledValue(pendaftaran, null);
+
       setData({
-        heroSlides: Array.isArray(heroSlides) ? heroSlides : [],
-        sekilasPandang: sekilasPandang || initialData.sekilasPandang,
-        visiMisi: visiMisi || initialData.visiMisi,
-        pengasuh: Array.isArray(pengasuh) ? pengasuh : [],
-        pendidikan: pendidikan || initialData.pendidikan,
-        pojokSantri: Array.isArray(pojokSantriResponse?.data)
-          ? pojokSantriResponse.data
-          : [],
-        pengumuman: Array.isArray(pengumuman)
-          ? pengumuman
-          : Array.isArray(pengumuman?.data)
-            ? pengumuman.data
-            : [],
-        pendaftaran: pendaftaran || initialData.pendaftaran,
+        heroSlides: normalizeCollection(heroSlidesValue),
+        sekilasPandang: sekilasPandangValue || initialData.sekilasPandang,
+        visiMisi: visiMisiValue || initialData.visiMisi,
+        pengasuh: normalizeCollection(pengasuhValue),
+        pendidikan: pendidikanValue || initialData.pendidikan,
+        pojokSantri: normalizeCollection(pojokValue),
+        pengumuman: normalizeCollection(pengumumanValue),
+        pendaftaran: pendaftaranValue || initialData.pendaftaran,
       });
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -294,7 +307,7 @@ export function DataProvider({ children }) {
 
     setData((prev) => ({
       ...prev,
-      pojokSantri: Array.isArray(response?.data) ? response.data : [],
+      pojokSantri: normalizeCollection(response),
     }));
 
     return response;
