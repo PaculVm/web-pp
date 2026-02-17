@@ -140,7 +140,14 @@ export function PendidikanPage() {
               </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {nonFormalEducation.map((edu, index) => (
+                {nonFormalEducation.map((edu, index) => {
+                  const methods = Array.isArray(edu.methods)
+                    ? edu.methods
+                    : Array.isArray(edu.programs)
+                      ? edu.programs
+                      : [];
+
+                  return (
                   <div
                     key={edu.id || index}
                     className="bg-white rounded-lg p-8 shadow-sm"
@@ -172,9 +179,42 @@ export function PendidikanPage() {
                         </div>
                       </div>
                     )}
-                    {/* ... (lanjutan subjects & programs) */}
+                    {Array.isArray(edu.subjects) && edu.subjects.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-semibold text-gray-900 mb-2">
+                          Mata Pelajaran:
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {edu.subjects.map((subject, i) => (
+                            <span
+                              key={i}
+                              className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm font-medium"
+                            >
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {methods.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">
+                          Metode Program:
+                        </h4>
+                        <ul className="space-y-2">
+                          {methods.map((method, i) => (
+                            <li key={i} className="flex items-center gap-2 text-gray-700">
+                              <Award className="w-4 h-4 text-emerald-600" />
+                              <span>{method}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -57,12 +57,13 @@ switch ($method) {
         $input = getJsonInput();
 
         $stmt = $pdo->prepare(
-            'UPDATE pendidikan SET
-             formal = ?, 
-             non_formal = ?, 
-             extracurriculars = ?, 
-             schedule = ?
-             WHERE id = 1'
+            'INSERT INTO pendidikan (id, formal, non_formal, extracurriculars, schedule)
+             VALUES (1, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+             formal = VALUES(formal),
+             non_formal = VALUES(non_formal),
+             extracurriculars = VALUES(extracurriculars),
+             schedule = VALUES(schedule)'
         );
 
         $stmt->execute([
