@@ -62,7 +62,7 @@ const sanitizeRichText = (html = '') => {
     .replace(/<p><br><\/p>/g, '')
     .trim();
 
-  DOMPurify.sanitize(normalized, {
+  return DOMPurify.sanitize(normalized, {
     ALLOWED_TAGS: [
       'p','br','strong','em','u',
       'ol','ul','li',
@@ -89,6 +89,15 @@ export function DataProvider({ children }) {
     try {
       setLoading(true);
 
+      const prefersAdminArticles =
+        typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+
+      const articleStatus = prefersAdminArticles ? 'all' : 'published';
+
+      const articlesPromise = getArticles(1, 200, articleStatus).catch(() =>
+        getArticles(1, 200, 'published')
+      );
+
       const [
         heroSlides,
         sekilasPandang,
@@ -104,7 +113,7 @@ export function DataProvider({ children }) {
         getVisiMisi(),
         getPengasuh(),
         getPendidikan(),
-        getArticles(1, 200, 'published'),
+        articlesPromise,
         getPengumuman(),
         getPendaftaran(),
       ]);
@@ -114,7 +123,7 @@ export function DataProvider({ children }) {
         sekilasPandang: sekilasPandang || initialData.sekilasPandang,
         visiMisi: visiMisi || initialData.visiMisi,
         pengasuh: Array.isArray(pengasuh) ? pengasuh : [],
-        pendidikan: Array.isArray(pendidikan) ? pendidikan : [],
+        pendidikan: pendidikan || initialData.pendidikan,
         pojokSantri: Array.isArray(pojokSantriResponse?.data)
           ? pojokSantriResponse.data
           : [],
@@ -123,7 +132,7 @@ export function DataProvider({ children }) {
           : Array.isArray(pengumuman?.data)
             ? pengumuman.data
             : [],
-        pendaftaran: Array.isArray(pendaftaran) ? pendaftaran : [],
+        pendaftaran: pendaftaran || initialData.pendaftaran,
       });
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -142,6 +151,16 @@ export function DataProvider({ children }) {
 
   const addHeroSlide = async (slide) => {
     const created = await createHeroSlide(slide);
+
+    if (!created?.id) {
+      const latest = await getHero();
+      setData((prev) => ({
+        ...prev,
+        heroSlides: Array.isArray(latest) ? latest : prev.heroSlides,
+      }));
+      return;
+    }
+
     setData((prev) => ({
       ...prev,
       heroSlides: [...prev.heroSlides, created]
@@ -150,6 +169,16 @@ export function DataProvider({ children }) {
 
   const updateHeroSlide = async (id, updatedSlide) => {
     const updated = await updateHeroSlideApi(id, updatedSlide);
+
+    if (!updated?.id) {
+      const latest = await getHero();
+      setData((prev) => ({
+        ...prev,
+        heroSlides: Array.isArray(latest) ? latest : prev.heroSlides,
+      }));
+      return;
+    }
+
     setData((prev) => ({
       ...prev,
       heroSlides: prev.heroSlides.map((s) =>
@@ -204,16 +233,39 @@ export function DataProvider({ children }) {
 
   const addPengasuh = async (pengasuh) => {
     const created = await createPengasuh(pengasuh);
+
+    if (!created?.id) {
+      const latest = await getPengasuh();
+      setData((prev) => ({
+        ...prev,
+        pengasuh: Array.isArray(latest) ? latest : prev.pengasuh,
+      }));
+      return;
+    }
+
     setData((prev) => ({
       ...prev,
       pengasuh: [created, ...prev.pengasuh],
     }));
   };
 
-  const updatePengasuh = async (newPengasuh) => {
+  const updatePengasuh = async (id, newPengasuh) => {
+    const updated = await updatePengasuhApi(id, newPengasuh);
+
+    if (!updated?.id) {
+      const latest = await getPengasuh();
+      setData((prev) => ({
+        ...prev,
+        pengasuh: Array.isArray(latest) ? latest : prev.pengasuh,
+      }));
+      return;
+    }
+
     setData((prev) => ({
       ...prev,
-      pengasuh: newPengasuh,
+      pengasuh: prev.pengasuh.map((item) =>
+        String(item.id) === String(id) ? updated : item
+      ),
     }));
   };
 
@@ -251,6 +303,15 @@ export function DataProvider({ children }) {
 
     const created = await createPojokSantri(cleaned);
 
+    if (!created?.id) {
+      const latest = await getArticles(1, 200, 'all');
+      setData((prev) => ({
+        ...prev,
+        pojokSantri: Array.isArray(latest?.data) ? latest.data : prev.pojokSantri,
+      }));
+      return;
+    }
+
     setData((prev) => ({
       ...prev,
       pojokSantri: [created, ...prev.pojokSantri],
@@ -264,6 +325,15 @@ export function DataProvider({ children }) {
     };
 
     const updated = await updatePojokSantriApi(id, cleaned);
+
+    if (!updated?.id) {
+      const latest = await getArticles(1, 200, 'all');
+      setData((prev) => ({
+        ...prev,
+        pojokSantri: Array.isArray(latest?.data) ? latest.data : prev.pojokSantri,
+      }));
+      return;
+    }
 
     setData((prev) => ({
       ...prev,
@@ -295,6 +365,19 @@ export function DataProvider({ children }) {
 
     const created = await createPengumuman(cleaned);
 
+    if (!created?.id) {
+      const latest = await getPengumuman();
+      setData((prev) => ({
+        ...prev,
+        pengumuman: Array.isArray(latest)
+          ? latest
+          : Array.isArray(latest?.data)
+            ? latest.data
+            : prev.pengumuman,
+      }));
+      return;
+    }
+
     setData((prev) => ({
       ...prev,
       pengumuman: [created, ...prev.pengumuman],
@@ -308,6 +391,19 @@ export function DataProvider({ children }) {
     };
 
     const updated = await updatePengumumanApi(id, cleaned);
+
+    if (!updated?.id) {
+      const latest = await getPengumuman();
+      setData((prev) => ({
+        ...prev,
+        pengumuman: Array.isArray(latest)
+          ? latest
+          : Array.isArray(latest?.data)
+            ? latest.data
+            : prev.pengumuman,
+      }));
+      return;
+    }
 
     setData((prev) => ({
       ...prev,
