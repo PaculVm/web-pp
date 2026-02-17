@@ -111,6 +111,10 @@ switch ($method) {
                      ORDER BY date DESC, id DESC
                      LIMIT ? OFFSET ?'
                 );
+                $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+                $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+                $stmt->execute();
+
                 $countStmt = $pdo->query(
                     'SELECT COUNT(*) as total FROM pojok_santri'
                 );
