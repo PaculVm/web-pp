@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { PublicLayout } from "../components/PublicLayout"; // Pastikan path benar
 import { useData } from "../contexts/DataContext";
 import { ArrowRight, Calendar, AlertCircle } from "lucide-react";
+import { PublicRichTextRenderer } from "../components/ui/PublicRichTextRenderer";
 
 export function PengumumanPage() {
   const { pengumuman } = useData();
@@ -68,11 +69,16 @@ export function PengumumanPage() {
                       <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors mb-3 line-clamp-2">
                         {item.title}
                       </h3>
-                      <p className="text-gray-500 text-sm line-clamp-3 flex-1">
-                        {item.content
-                          ? item.content.substring(0, 150) + "..."
-                          : "Klik untuk membaca selengkapnya."}
-                      </p>
+                      {item.content ? (
+                        <PublicRichTextRenderer
+                          content={item.content}
+                          className="text-sm text-gray-500 line-clamp-3 flex-1 [&_p]:my-0 [&_p]:leading-6"
+                        />
+                      ) : (
+                        <p className="text-gray-500 text-sm line-clamp-3 flex-1">
+                          Klik untuk membaca selengkapnya.
+                        </p>
+                      )}
                       <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-1 text-emerald-600 text-sm font-medium group-hover:gap-2 transition-all">
                         Baca Selengkapnya <ArrowRight size={14} />
                       </div>
