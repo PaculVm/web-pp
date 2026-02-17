@@ -33,18 +33,21 @@ export function SekilasPandangPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
           {/* Konten kiri */}
           <div className="lg:col-span-3">
-            <PublicRichTextRenderer content={sekilasPandang.content} />
+            <PublicRichTextRenderer content={sekilasPandang.content || '<p>Konten belum tersedia.</p>'} />
           </div>
 
           {/* Sidebar kanan */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="rounded-2xl overflow-hidden">
-              <img
-                src={sekilasPandang.image}
-                alt="Pondok Pesantren Darussalam Panusupan"
-                className="w-full h-64 object-cover"
-              />
-            </div>
+            {sekilasPandang.image ? (
+              <div className="rounded-2xl overflow-hidden">
+                <img
+                  src={sekilasPandang.image}
+                  alt="Pondok Pesantren Darussalam Panusupan"
+                  className="w-full h-64 object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-4">
               {(sekilasPandang.stats || []).map((stat) => (
@@ -58,6 +61,12 @@ export function SekilasPandangPage() {
                   <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
                 </div>
               ))}
+
+              {!sekilasPandang.stats?.length ? (
+                <div className="col-span-2 bg-gray-50 rounded-xl p-5 text-center text-sm text-gray-500">
+                  Statistik belum tersedia.
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
