@@ -106,9 +106,28 @@ function setAuthCookies($token)
 {
     $authOptions = buildCookieOptions(time() + 3600);
 
+    // Bersihkan kemungkinan cookie legacy (path /api)
+    // agar tidak terjadi duplikasi nama cookie dengan path berbeda.
+    $legacyExpired = buildCookieOptions(time() - 3600);
+    $legacyExpired['path'] = '/api';
+    setcookie('ppds_token', '', $legacyExpired);
+
     setcookie('ppds_token', $token, $authOptions);
 
     $csrfToken = bin2hex(random_bytes(32));
+
+    setcookie(
+        'ppds_csrf',
+        '',
+        [
+            'expires' => $legacyExpired['expires'],
+            'path' => '/api',
+            'secure' => $authOptions['secure'],
+            'httponly' => false,
+            'samesite' => 'Strict'
+        ]
+    );
+
     setcookie(
         'ppds_csrf',
         $csrfToken,
@@ -126,14 +145,30 @@ function clearAuthCookies()
 {
     $expired = time() - 3600;
     $options = buildCookieOptions($expired);
+    $legacyOptions = $options;
+    $legacyOptions['path'] = '/api';
 
     setcookie('ppds_token', '', $options);
+    setcookie('ppds_token', '', $legacyOptions);
+
     setcookie(
         'ppds_csrf',
         '',
         [
             'expires' => $expired,
             'path' => '/',
+            'secure' => $options['secure'],
+            'httponly' => false,
+            'samesite' => 'Strict'
+        ]
+    );
+
+    setcookie(
+        'ppds_csrf',
+        '',
+        [
+            'expires' => $expired,
+            'path' => '/api',
             'secure' => $options['secure'],
             'httponly' => false,
             'samesite' => 'Strict'
