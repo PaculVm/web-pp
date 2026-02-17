@@ -8,8 +8,9 @@ import { ConfirmDialog } from '../../components/ui/Dialog';
 
 export function AdminPengasuh() {
   const { user } = useAuth();
-  const { pengasuh, addPengasuh, deletePengasuh } = useData();
+  const { pengasuh, addPengasuh, updatePengasuh, deletePengasuh } = useData();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: '', role: '', image: '', bio: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null });
 
@@ -30,12 +31,32 @@ export function AdminPengasuh() {
     return '/images/placeholder.svg';
   };
 
-  const handleAdd = () => {
+  const resetForm = () => {
+    setForm({ name: '', role: '', image: '', bio: '' });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleSave = async () => {
     if (form.name && form.role) {
-      addPengasuh(form);
-      setForm({ name: '', role: '', image: '', bio: '' });
-      setShowForm(false);
+      if (editingId) {
+        await updatePengasuh(editingId, form);
+      } else {
+        await addPengasuh(form);
+      }
+      resetForm();
     }
+  };
+
+  const handleEdit = (item) => {
+    setForm({
+      name: item.name || '',
+      role: item.role || '',
+      image: item.image || '',
+      bio: item.bio || '',
+    });
+    setEditingId(item.id);
+    setShowForm(true);
   };
 
   const handleDelete = (id) => {
@@ -57,7 +78,13 @@ export function AdminPengasuh() {
 		  </p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm) {
+              resetForm();
+              return;
+            }
+            setShowForm(true);
+          }}
           className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${
             showForm 
               ? 'bg-white text-slate-600 border border-slate-200' 
@@ -72,7 +99,7 @@ export function AdminPengasuh() {
       {showForm && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-lg shadow-slate-200/50 p-4 mb-6 animate-in slide-in-from-top-4 duration-300">
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-1.5">
-            <User size={13} /> Entri Data Baru
+            <User size={13} /> {editingId ? 'Edit Data Pengasuh' : 'Entri Data Baru'}
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Foto Upload Kolom */}
@@ -129,11 +156,11 @@ export function AdminPengasuh() {
               </div>
               <div className="flex justify-end pt-1">
                 <button
-                  onClick={handleAdd}
+                  onClick={handleSave}
                   disabled={!form.name || !form.role}
                   className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all disabled:opacity-30"
                 >
-                  Simpan Profil
+                  {editingId ? 'Update Profil' : 'Simpan Profil'}
                 </button>
               </div>
             </div>
@@ -176,7 +203,10 @@ export function AdminPengasuh() {
               
               <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                 <span className="text-[9px] font-bold text-slate-300 uppercase">ID: {item.id.toString().substring(0, 8)}</span>
-                <button className="text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:underline">
+                <button
+                  onClick={() => handleEdit(item)}
+                  className="text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:underline"
+                >
                   Edit Profil
                 </button>
               </div>
