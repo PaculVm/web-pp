@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicLayout } from '../components/PublicLayout';
 import { useData } from '../contexts/DataContext';
@@ -7,7 +7,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { stripHTML } from '../utils/text';
 
 export function PojokSantriPage() {
-  const { pojokSantri } = useData();
+  const { pojokSantri, refreshPojokSantri } = useData();
   const { showToast } = useNotification();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -17,6 +17,12 @@ export function PojokSantriPage() {
     author: '',
     authorRole: '',
   });
+
+  useEffect(() => {
+    refreshPojokSantri('published').catch(() => {
+      showToast('Gagal memuat artikel terbaru.', 'error');
+    });
+  }, [refreshPojokSantri, showToast]);
 
   // Hanya tampilkan artikel yang sudah dipublikasikan di halaman publik
   const publishedArticles = Array.isArray(pojokSantri)
