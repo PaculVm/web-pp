@@ -2,23 +2,25 @@ import { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Save, CheckCircle, Plus, X, GraduationCap, Book, Clock, Users, Trash2 } from 'lucide-react';
 
+const cloneArray = (value) => JSON.parse(JSON.stringify(Array.isArray(value) ? value : []));
+
 export function AdminPendidikan() {
   const { pendidikan, updatePendidikan } = useData();
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('formal');
 
-  const [formal, setFormal] = useState(JSON.parse(JSON.stringify(pendidikan.formal)));
-  const [nonFormal, setNonFormal] = useState(JSON.parse(JSON.stringify(pendidikan.nonFormal)));
-  const [extracurriculars, setExtracurriculars] = useState([...pendidikan.extracurriculars]);
-  const [schedule, setSchedule] = useState(JSON.parse(JSON.stringify(pendidikan.schedule)));
+  const [formal, setFormal] = useState(cloneArray(pendidikan?.formal));
+  const [nonFormal, setNonFormal] = useState(cloneArray(pendidikan?.nonFormal));
+  const [extracurriculars, setExtracurriculars] = useState(Array.isArray(pendidikan?.extracurriculars) ? [...pendidikan.extracurriculars] : []);
+  const [schedule, setSchedule] = useState(cloneArray(pendidikan?.schedule));
   const [newEkstra, setNewEkstra] = useState('');
 
   // Sync state when pendidikan updates from context
   useEffect(() => {
-    setFormal(JSON.parse(JSON.stringify(pendidikan.formal || [])));
-    setNonFormal(JSON.parse(JSON.stringify(pendidikan.nonFormal || [])));
-    setExtracurriculars([...(pendidikan.extracurriculars || [])]);
-    setSchedule(JSON.parse(JSON.stringify(pendidikan.schedule || [])));
+    setFormal(cloneArray(pendidikan?.formal));
+    setNonFormal(cloneArray(pendidikan?.nonFormal));
+    setExtracurriculars(Array.isArray(pendidikan?.extracurriculars) ? [...pendidikan.extracurriculars] : []);
+    setSchedule(cloneArray(pendidikan?.schedule));
   }, [pendidikan]);
 
   const handleSave = () => {
